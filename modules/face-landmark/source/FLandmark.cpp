@@ -8,7 +8,7 @@ namespace landmark {
 FLandmark::FLandmark( FLANDMARK_Model *model )
 {
     this->model = model;
-    landmarks = new double[2 * model->data.options.M];//(double*) malloc(2 * model->data.options.M * sizeof(double));
+    landmarks = new double[2 * model->data.options.M];
 }
 
 
@@ -36,7 +36,7 @@ bool FLandmark::detect( IplImage* input, const CvRect *faceRect )
 }
 
 
-bool FLandmark::getLandmark( int index, CvPoint &point )
+/*bool FLandmark::getLandmark( int index, CvPoint &point )
 {
     if (index < 0 || index >= model->data.options.M) return false;
 
@@ -44,6 +44,18 @@ bool FLandmark::getLandmark( int index, CvPoint &point )
     point.y = landmarks[index * 2 + 1];
 
     return true;
+}*/
+
+
+int FLandmark::getX( int index )
+{
+    return landmarks[index * 2];
+}
+
+
+int FLandmark::getY( int index )
+{
+    return landmarks[index * 2 + 1];
 }
 
 

@@ -19,7 +19,9 @@ class FLandmark : public FaceLandmark
         virtual ~FLandmark();
 
         bool detect( IplImage* input, const CvRect *faceRect );
-        bool getLandmark( int index, CvPoint &point );
+        //bool getLandmark( int index, CvPoint &point );
+        int getX( int index );
+        int getY( int index );
 
     public:
         FLANDMARK_Model *model;

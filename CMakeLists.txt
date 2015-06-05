@@ -1,4 +1,4 @@
-project(cpqdtts)
+project(vasr)
 
 cmake_minimum_required(VERSION 2.8)
 
@@ -82,8 +82,8 @@ endif()
 ## Define as bibliotecas adicionais a serem utilizadas.
 ##
 find_package (Threads)
-set(TTS_LIBS_THREAD ${CMAKE_THREAD_LIBS_INIT})
-set(TTS_LIBS_DL ${CMAKE_DL_LIBS})
+set(VASR_LIBS_THREAD ${CMAKE_THREAD_LIBS_INIT})
+set(VASR_LIBS_DL ${CMAKE_DL_LIBS})
 
 
 ##
@@ -164,7 +164,7 @@ endif()
 ################################################################################
 
 add_subdirectory(3rd-party/flandmark)
-add_subdirectory(demos/features)
+add_subdirectory(demos/gui)
 add_subdirectory(modules/face-detector)
 add_subdirectory(modules/face-landmark)
 

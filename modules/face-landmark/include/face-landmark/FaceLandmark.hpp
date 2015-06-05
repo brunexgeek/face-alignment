@@ -17,7 +17,10 @@ class FaceLandmark
         virtual ~FaceLandmark();
 
         virtual bool detect( IplImage* input, const CvRect *faceRect ) = 0;
-        virtual bool getLandmark( int index, CvPoint &point ) = 0;
+        //virtual bool getLandmark( int index, CvPoint &point ) = 0;
+
+        virtual int getX( int index );
+        virtual int getY( int index );
 };
 
 
