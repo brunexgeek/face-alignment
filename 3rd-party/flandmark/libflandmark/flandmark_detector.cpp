@@ -776,7 +776,7 @@ void flandmark_argmax(double *smax, FLANDMARK_Options *options, const int *mapTa
 
     double * s1 = (double *)calloc(2*q1_length, sizeof(double));
     double * s1_maxs = (double *)calloc(q1_length, sizeof(double));
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for (int i = 0; i < q1_length; ++i)
     {
         // dot product <g_5, PsiGS1>
@@ -797,7 +797,7 @@ void flandmark_argmax(double *smax, FLANDMARK_Options *options, const int *mapTa
     int q2_length = Psi_sparse[2].PSI_COLS;
     double * s2 = (double *)calloc(2*q2_length, sizeof(double));
     double * s2_maxs = (double *)calloc(q2_length, sizeof(double));
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for (int i = 0; i < q2_length; ++i)
     {
         // dot product <g_6, PsiGS2>
@@ -818,7 +818,7 @@ void flandmark_argmax(double *smax, FLANDMARK_Options *options, const int *mapTa
     double maxs0 = -FLT_MAX; int maxs0_idx = -1;
     double maxq10 = -FLT_MAX, maxq20 = -FLT_MAX, maxq30 = -FLT_MAX, maxq40 = -FLT_MAX, maxq70 = -FLT_MAX;
     double * s0 = (double *)calloc(M*q0_length, sizeof(double));
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for (int i = 0; i < q0_length; ++i)
     {
         // q10
@@ -912,7 +912,7 @@ int flandmark_detect_base(uint8_t* face_image, FLANDMARK_Model* model, double * 
 
 	int idx_qtemp = 0;
 
-    #pragma omp parallel for
+    //#pragma omp parallel for
 	for (int idx = 0; idx < M; ++idx)
 	{
 		// Q

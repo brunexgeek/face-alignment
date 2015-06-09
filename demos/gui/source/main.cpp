@@ -277,6 +277,8 @@ int main( int argc, char** argv )
     originalW = frameW = (int)cvGetCaptureProperty(device, CV_CAP_PROP_FRAME_WIDTH);
     frameCount = (int)cvGetCaptureProperty(device, CV_CAP_PROP_FRAME_COUNT);
     inputFPS = (int)cvGetCaptureProperty(device, CV_CAP_PROP_FPS);
+    if (frameCount < 0) frameCount = 0;
+    if (inputFPS < 0) inputFPS = 24;
     frameTime = 1000 / inputFPS;
 
     // limit the width of the input frame
