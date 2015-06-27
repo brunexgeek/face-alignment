@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <cv.h>
 #include <cvaux.h>
-#include <highgui.h>
+#include <opencv2/opencv.hpp>
 #include <getopt.h>
 #include <face-detector/detector.hpp>
 #include <face-landmark/landmark.hpp>
@@ -10,6 +10,7 @@
 
 using namespace vasr::detector;
 using namespace vasr::landmark;
+using namespace cv;
 
 
 #define INFOBOX_HEIGHT        100
@@ -27,6 +28,8 @@ char *inputFileName = NULL;
 char *outputFileName = NULL;
 bool useRotation = false;
 
+CvPoint lastLeft = { 0, 0 };
+CvPoint lastRight = { 0, 0 };
 
 void main_usage()
 {
@@ -67,7 +70,7 @@ void main_parseOptions( int argc, char **argv )
 
 
 static int main_initDevice(
-    CvCapture **device,
+    VideoCapture **device,
     const char *fileName = NULL,
     int camera = 0,
     int width = 640,
@@ -78,14 +81,14 @@ static int main_initDevice(
         if (fileName == NULL)
         {
             printf("Capturing from camera #%d\n", camera);
-            *device = cvCaptureFromCAM(camera);
-            cvSetCaptureProperty(*device, CV_CAP_PROP_FRAME_WIDTH, width);
-            cvSetCaptureProperty(*device, CV_CAP_PROP_FRAME_HEIGHT, height);
+            *device = new VideoCapture(camera);
+            (*device)->set(CV_CAP_PROP_FRAME_WIDTH, width);
+            (*device)->set(CV_CAP_PROP_FRAME_HEIGHT, height);
         }
         else
         {
             printf("Capturing from file '%s'\n", fileName);
-            *device = cvCaptureFromAVI(fileName);
+            *device = new VideoCapture(fileName);
         }
 
         if (*device == NULL)
@@ -100,11 +103,11 @@ static int main_initDevice(
 
 
 bool main_landmark(
-    IplImage *orig,
-    IplImage* input,
+    Mat &orig,
+    Mat &input,
     FaceDetector *detector,
     FaceLandmark *landmarker,
-    CvRect *bbox,
+    Rect &bbox,
     int *time )
 {
     static bool hasFace = false;
@@ -127,28 +130,35 @@ bool main_landmark(
         }
     }
 
-    double startTime = (double)cvGetTickCount();
+    double startTime = (double)getTickCount();
 
-    landmarker->detect(input, bbox);
+    /*landmarker->detect(input, bbox);
 
 
     if (time != NULL)
     {
         startTime = (double)cvGetTickCount() - startTime;
         *time = cvRound( startTime / ((double)cvGetTickFrequency() * 1000.0) );
-    }
+    }*/
 
     return true;
 }
 
 
-static void main_println( IplImage *image, CvFont *font, int x, int y, int line, const char *text )
+static void main_println( Mat &image, int x, int y, int line, const char *text )
 {
-    CvSize size;
+    Size size;
     int baseline;
 
-    cvGetTextSize(text, font, &size, &baseline);
-    cvPutText(image, text, cvPoint(x, y + (line + 1) * (size.height + 10)), font, cvScalar(255, 255, 255, 0));
+    size = getTextSize(text, FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
+    putText(image,
+		text,
+		Point(x, y + (line + 1) * (size.height + 10)),
+		FONT_HERSHEY_SIMPLEX,
+		0.5,
+		Scalar(255, 255, 255, 0),
+		1,
+		CV_AA);
 }
 
 
@@ -175,7 +185,7 @@ static void main_getDelta(
 }
 
 
-static cv::Mat main_getRotationMatrix(
+static Mat main_getRotationMatrix(
     FaceLandmark &landmarker  )
 {
     double dx = 0, dy = 0;
@@ -194,30 +204,48 @@ static cv::Mat main_getRotationMatrix(
     right.y = landmarker.getY(6);
 #endif
 
-    main_getDelta(left, right, dx, dy, &center);
+    if (lastLeft.x == 0)
+    {
+        lastLeft.x = left.x;
+        lastLeft.y = left.y;
+        lastRight.x = right.x;
+        lastRight.y = right.y;
+    }
+    else
+    {
+        lastLeft.x = (lastLeft.x + left.x) / 2;
+        lastLeft.y = (lastLeft.y + left.y) / 2;
+        lastRight.x = (right.x + left.x) / 2;
+        lastRight.y = (right.y + left.y) / 2;
+    }
+
+    main_getDelta(lastLeft, lastRight, dx, dy, &center);
+
     //printf("delta.x = %f  delta.y = %f\n", dx, dy);
     if (dx < 0) dx *= -1;
 
     double m = dy / dx;
     double angle = (m == 0) ? 0 : atan(m) * -180 / 3.14159265;
-printf("Angle: %f degress gradient %f)\n", angle, m);
+//printf("Angle: %f degress gradient %f)\n", angle, m);
     return cv::getRotationMatrix2D(center, angle, 1);
 }
 
-cv::Point2f operator*(cv::Mat M, const cv::Point2f& p){
-        cv::Mat src(3/*rows*/,1 /* cols */,CV_64F);
+Point2f operator*(cv::Mat M, const cv::Point2f& p)
+{
+	cv::Mat src(3/*rows*/,1 /* cols */,CV_64F);
 
-        src.at<double>(0,0)=p.x;
-        src.at<double>(1,0)=p.y;
-        src.at<double>(2,0)=1.0;
+	src.at<double>(0,0)=p.x;
+	src.at<double>(1,0)=p.y;
+	src.at<double>(2,0)=1.0;
 
-        cv::Mat dst = M*src; //USE MATRIX ALGEBRA
-        return cv::Point2f(dst.at<double>(0,0),dst.at<double>(1,0));
+	cv::Mat dst = M*src; //USE MATRIX ALGEBRA
+	return cv::Point2f(dst.at<double>(0,0),dst.at<double>(1,0));
 }
 
+
 static void main_rotateFace(
-    IplImage *image,
-    IplImage *rotated,
+    Mat &image,
+    Mat &rotated,
     FaceLandmark &landmarker )
 {
     cv::Mat rot;
@@ -231,8 +259,8 @@ static void main_rotateFace(
     rp = rot * p;
 
     float width = rp.x - lp.x;
-    lp.x += -1 * width * 0.1f;
-    rp.x += width * 0.1f;
+    lp.x += -1 * width * 0.2f;
+    rp.x += width * 0.2f;
 
     width = rp.x - lp.x;
     float height = width * 0.5f;
@@ -242,9 +270,9 @@ static void main_rotateFace(
     cv::Mat src, dst;
     src = image;
     warpAffine(src, dst, rot, dst.size());
-    *rotated = dst;
+    rotated = dst;
 
-    cvRectangle(rotated, lp, rp, CV_RGB(255,0,0) );
+    rectangle(rotated, lp, rp, CV_RGB(255,0,0) );
 }
 
 
@@ -257,13 +285,14 @@ int main( int argc, char** argv )
     ViolaJones *detector;
     FaceLandmark *landmarker;
     const char *windowName = "Visual ASR Demo";
-    CvVideoWriter *writer = NULL;
+    VideoWriter *writer = NULL;
     int inputFPS = 0;
     int frameW = 0, originalW;
     int frameH = 0, originalH;
     int frameCount = 0;
-    CvCapture* device = 0;
-    IplImage *frame = 0;
+    VideoCapture *device = NULL;
+    Mat frame, tempFrame;
+    char text[256];
 
     main_parseOptions(argc, argv);
 
@@ -273,40 +302,37 @@ int main( int argc, char** argv )
     else
         result = main_initDevice(&device, inputFileName);
     if (result != 0) return 1;
-    originalH = frameH = (int)cvGetCaptureProperty(device, CV_CAP_PROP_FRAME_HEIGHT);
-    originalW = frameW = (int)cvGetCaptureProperty(device, CV_CAP_PROP_FRAME_WIDTH);
-    frameCount = (int)cvGetCaptureProperty(device, CV_CAP_PROP_FRAME_COUNT);
-    inputFPS = (int)cvGetCaptureProperty(device, CV_CAP_PROP_FPS);
+    originalH = frameH = (int)device->get(CV_CAP_PROP_FRAME_HEIGHT);
+    originalW = frameW = (int)device->get(CV_CAP_PROP_FRAME_WIDTH);
+    frameCount = (int)device->get(CV_CAP_PROP_FRAME_COUNT);
+    inputFPS = (int)device->get(CV_CAP_PROP_FPS);
     if (frameCount < 0) frameCount = 0;
     if (inputFPS < 0) inputFPS = 24;
     frameTime = 1000 / inputFPS;
 
     // limit the width of the input frame
-    IplImage *tempFrame = NULL;
     if (frameW > FRAME_MAX_WIDTH)
     {
         frameH = (frameH * FRAME_MAX_WIDTH / frameW);
         frameW = FRAME_MAX_WIDTH;
         mustResize = true;
-        tempFrame = cvCreateImage(cvSize(frameW, frameH), IPL_DEPTH_8U, 3);
-        frame = tempFrame;
     }
     // create the display window
-    cvNamedWindow(windowName, 0);
+    namedWindow(windowName, 0);
     int windowW = frameW;
     int windowH = frameH + INFOBOX_HEIGHT;
-    cvResizeWindow(windowName, windowW, windowH);
+    resizeWindow(windowName, windowW, windowH);
 
     // initialize the output video writer
     if (outputFileName != NULL)
-        writer = cvCreateVideoWriter(outputFileName,
+        writer = new VideoWriter(outputFileName,
             CV_FOURCC('M', 'J', 'P', 'G'), inputFPS,
             cvSize(windowW, windowH));
 
     // load the HaarCascade classifier for face detection
-    CvHaarClassifierCascade* faceCascade;
-    faceCascade = (CvHaarClassifierCascade*)cvLoad(FACE_CASCADE_FILE, 0, 0, 0);
-    if (!faceCascade)
+    CascadeClassifier faceCascade(FACE_CASCADE_FILE);
+    //faceCascade = (CvHaarClassifierCascade*)cvLoad(FACE_CASCADE_FILE, 0, 0, 0);
+    if (faceCascade.empty())
     {
         printf("Error loading face cascade file '%s'\n", FACE_CASCADE_FILE);
         return 1;
@@ -321,71 +347,78 @@ int main( int argc, char** argv )
     }
 
     // create the temporary buffers
-    CvRect bbox;
-    IplImage *frame_bw = cvCreateImage(cvSize(frameW, frameH), IPL_DEPTH_8U, 1);
-    IplImage *rotated = cvCreateImage(cvSize(frameW, frameH), IPL_DEPTH_8U, 1);
-    IplImage *display = cvCreateImage(cvSize(windowW, windowH), IPL_DEPTH_8U, 3);
-    // create the GUI font
-    char text[256];
-    CvFont font;
-    cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5, 0, 0.5, CV_AA);
-
+    Rect bbox;
+    Mat frame_bw = Mat::zeros(frameW, frameH, CV_8UC1);
+    Mat rotated = Mat::zeros(frameW, frameH, CV_8UC1);
+    Mat display = Mat::zeros(windowW, windowH, CV_8UC3);
+std::cout << "'display'  Type " << display.type() << std::endl;
     int currentFrame = 0;
     bool flag = true;
     int landmarkTime = 0;
 
     // initialize the face detector and face landmarker
-    detector = new ViolaJones(faceCascade);
+    detector = new ViolaJones(&faceCascade);
     landmarker = new FLandmark(model);
 
     while (flag)
     {
         if (useCamera == false && ++currentFrame >= frameCount - 2) break;
 
-        startTime = (double)cvGetTickCount();
+        startTime = (double)getTickCount();
 
         //frame = main_getFrame(&device, infname);
-        frame = cvQueryFrame(device);
-        if (!frame) break;
+        *device >> frame;
 
         // check if need to resize the frame
         if (mustResize)
         {
-            cvResize(frame, tempFrame, cv::INTER_AREA);
+            resize(frame, tempFrame, Size(frameW, frameH), 0, 0, cv::INTER_AREA);
             frame = tempFrame;
         }
+        // check if need to flip horizontaly (when using camera)
+        if (useCamera)
+        {
+            flip(frame, tempFrame, 1);
+            frame = tempFrame;
+		}
+		//tempFrame = Mat::zeros(frame.rows, frame.cols, frame.type());
+		//bilateralFilter(frame, tempFrame, 16, 32, 8);
+		//frame = tempFrame;
         // convert the original frame to grayscale and look for landmarks
-        cvConvertImage(frame, frame_bw);
-        hasFace = main_landmark(frame, frame_bw, detector, landmarker, &bbox, &landmarkTime);
-        if (showProcessedFrame) cvConvertImage(frame_bw, frame);
+        cvtColor(frame, frame_bw, CV_RGB2GRAY);
+        hasFace = main_landmark(frame, frame_bw, detector, landmarker, bbox, &landmarkTime);
+        if (showProcessedFrame)
+        {
+			cvtColor(frame_bw, frame, CV_GRAY2RGB);
+		}
         if (hasFace && useRotation)
         {
             main_rotateFace(frame, rotated, *landmarker);
             frame = rotated;
         }
 
+        // update the display image
+        copyMakeBorder(frame, display, 0, INFOBOX_HEIGHT, 0, 0, cv::BORDER_CONSTANT, cvScalar(0.0f, 0.0f, 0.0f, 0.0f));
+
         // display landmarks
         if (hasFace)
         {
-            cvRectangle(frame, cvPoint(bbox.x, bbox.y), cvPoint(bbox.x+bbox.width, bbox.y+bbox.height), CV_RGB(255,0,0) );
-            cvRectangle(frame, cvPoint(model->bb[0], model->bb[1]), cvPoint(model->bb[2], model->bb[3]), CV_RGB(0,0,255) );
-            //cvCircle(frame, cvPoint((int)landmarks[0], (int)landmarks[1]), 3, CV_RGB(0, 0,255), CV_FILLED);
+            rectangle(display, Point(bbox.x, bbox.y), cvPoint(bbox.x+bbox.width, bbox.y+bbox.height), CV_RGB(255,0,0) );
+            rectangle(display, Point(model->bb[0], model->bb[1]), cvPoint(model->bb[2], model->bb[3]), CV_RGB(0,0,255) );
             if (!useRotation)
             {
-                CvPoint point;
+                Point point;
                 for (int i = 1; i < model->data.options.M; ++i)
                 {
                     point.x = landmarker->getX(i);
                     point.y = landmarker->getY(i);
-                    cvCircle(frame, point, 3, CV_RGB(255,0,0), CV_FILLED);
+                    circle(display, point, 3, CV_RGB(255,0,0), CV_FILLED);
                 }
             }
         }
 
-        // update the display image
-        cvCopyMakeBorder(frame, display, cvPoint(0, 0), cv::BORDER_CONSTANT, cvScalar(0.0f, 0.0f, 0.0f, 0.0f));
         // update time counters
-        processTime = ((double)cvGetTickCount() - startTime) / ((double)cvGetTickFrequency() * 1000);
+        processTime = ((double)getTickCount() - startTime) / ((double)getTickFrequency() * 1000);
         finalTime = processTime + ((frameTime > processTime) ? frameTime - processTime : 0);
 
         // print FPS
@@ -393,17 +426,17 @@ int main( int argc, char** argv )
             inputFPS,
             1000.0 / finalTime,
             1000.0 / processTime);
-        main_println(display, &font, 10, frameH, 0, text);
+        main_println(display, 10, frameH, 0, text);
         // print frame count
         sprintf(text, "Frame %d of %d", currentFrame, frameCount);
-        main_println(display, &font, 10, frameH, 1, text);
+        main_println(display, 10, frameH, 1, text);
         // print frame size
         sprintf(text, "Frame: Original=%dx%d    Processed=%dx%d",
             originalW,
             originalH,
             frameW,
             frameH);
-        main_println(display, &font, 10, frameH, 2, text);
+        main_println(display, 10, frameH, 2, text);
         // print face size
         sprintf(text, "Face: Minimum=%dx%d    Current=%dx%d    Time=%d ms",
             std::min(frameW, frameH) / 4,
@@ -411,21 +444,21 @@ int main( int argc, char** argv )
             bbox.width,
             bbox.height,
             landmarkTime);
-        main_println(display, &font, 10, frameH, 3, text);
+        main_println(display, 10, frameH, 3, text);
 
-        cvShowImage(windowName, display );
+        imshow(windowName, display);
 
         // check if need to wait some time to keep the FPS
         flag = (char)cvWaitKey((frameTime > processTime) ? frameTime - processTime + 1 : 1) != 27;
+        //flag = (char)cvWaitKey(0) != 27;
         // write the output video
-        if (writer != NULL) cvWriteFrame(writer, display);
+        if (writer != NULL) (*writer) << display;
     }
 
     // release resources
-    if (tempFrame != NULL) cvReleaseImage(&tempFrame);
     delete detector;
-    cvReleaseCapture(&device);
-    cvReleaseHaarClassifierCascade(&faceCascade);
+    delete writer;
+    delete device;
     cvDestroyWindow(windowName);
     flandmark_free(model);
 }

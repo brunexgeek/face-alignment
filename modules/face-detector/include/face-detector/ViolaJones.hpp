@@ -1,9 +1,7 @@
 #ifndef VIOLA_JONES_FACE_DETECTOR_HPP
 #define VIOLA_JONES_FACE_DETECTOR_HPP
 
-#include <cv.h>
-#include <cvaux.h>
-#include <highgui.h>
+#include <opencv2/opencv.hpp>
 #include <face-detector/FaceDetector.hpp>
 
 
@@ -14,14 +12,14 @@ namespace detector {
 class ViolaJones : public FaceDetector
 {
     public:
-        ViolaJones( CvHaarClassifierCascade* cascade );
+        ViolaJones( cv::CascadeClassifier *cascade );
         virtual ~ViolaJones();
 
-        bool detect( IplImage* input, CvRect *rect );
+        bool detect( const cv::Mat &input, cv::Rect &rect );
 
     private:
-        CvMemStorage *storage;
-        CvHaarClassifierCascade *cascade;
+        cv::MemStorage *storage;
+        cv::CascadeClassifier *cascade;
 
 };
 

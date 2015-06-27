@@ -1,9 +1,7 @@
 #ifndef FACE_DETECTOR_HPP
 #define FACE_DETECTOR_HPP
 
-#include <cv.h>
-#include <cvaux.h>
-#include <highgui.h>
+#include <opencv2/opencv.hpp>
 
 
 namespace vasr {
@@ -16,7 +14,7 @@ class FaceDetector
         FaceDetector( );
         virtual ~FaceDetector();
 
-        virtual bool detect( IplImage* input, CvRect *rect ) = 0;
+        virtual bool detect( const cv::Mat &input, cv::Rect &rect ) = 0;
 };
 
 

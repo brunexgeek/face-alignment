@@ -25,6 +25,7 @@ void liblbp_pyr_features_sparse(t_index* vec, uint32_t vec_nDim, uint32_t* img, 
     {
         for(x = 1; x < ww-1; x++)
         {
+
             for(y = 1; y< hh-1; y++)
             {
                 pattern = 0;
@@ -50,17 +51,17 @@ void liblbp_pyr_features_sparse(t_index* vec, uint32_t vec_nDim, uint32_t* img, 
         if(hh % 2 == 1) hh--;
 
         ww = ww/2;
-        
+
         for(x=0; x < ww; x++)
           for(j=0; j < hh; j++)
-            img[LIBLBP_INDEX(j,x,img_nRows)] = img[LIBLBP_INDEX(j,2*x,img_nRows)] + 
+            img[LIBLBP_INDEX(j,x,img_nRows)] = img[LIBLBP_INDEX(j,2*x,img_nRows)] +
               img[LIBLBP_INDEX(j,2*x+1,img_nRows)];
 
         hh = hh/2;
-        
+
         for(y=0; y < hh; y++)
           for(j=0; j < ww; j++)
-            img[LIBLBP_INDEX(y,j,img_nRows)] = img[LIBLBP_INDEX(2*y,j,img_nRows)] + 
+            img[LIBLBP_INDEX(y,j,img_nRows)] = img[LIBLBP_INDEX(2*y,j,img_nRows)] +
               img[LIBLBP_INDEX(2*y+1,j,img_nRows)];
     }
     return;
@@ -96,11 +97,11 @@ void liblbp_pyr_features(char *vec, uint32_t vec_nDim, uint32_t *img, uint16_t i
         if(img[LIBLBP_INDEX(y+1,x+1,img_nRows)] < center) pattern = pattern | 0x80;
 
         vec[offset+pattern]++;
-        offset += 256; 
+        offset += 256;
 
       }
     }
-    if(vec_nDim <= offset) 
+    if(vec_nDim <= offset)
       return;
 
     if(ww % 2 == 1) ww--;
@@ -109,15 +110,15 @@ void liblbp_pyr_features(char *vec, uint32_t vec_nDim, uint32_t *img, uint16_t i
     ww = ww/2;
     for(x=0; x < ww; x++)
       for(j=0; j < hh; j++)
-        img[LIBLBP_INDEX(j,x,img_nRows)] = img[LIBLBP_INDEX(j,2*x,img_nRows)] + 
+        img[LIBLBP_INDEX(j,x,img_nRows)] = img[LIBLBP_INDEX(j,2*x,img_nRows)] +
           img[LIBLBP_INDEX(j,2*x+1,img_nRows)];
 
     hh = hh/2;
     for(y=0; y < hh; y++)
       for(j=0; j < ww; j++)
-        img[LIBLBP_INDEX(y,j,img_nRows)] = img[LIBLBP_INDEX(2*y,j,img_nRows)] + 
+        img[LIBLBP_INDEX(y,j,img_nRows)] = img[LIBLBP_INDEX(2*y,j,img_nRows)] +
           img[LIBLBP_INDEX(2*y+1,j,img_nRows)];
-    
+
   }
 
   return;
@@ -132,7 +133,7 @@ double liblbp_pyr_dotprod(double *vec, uint32_t vec_nDim, uint32_t *img, uint16_
   uint32_t offset=0;
   uint32_t ww, hh, center, x, y, j;
   uint8_t pattern;
-  
+
 /*  ww=win_W;*/
 /*  hh=win_H;*/
   ww=img_nCols;
@@ -155,12 +156,12 @@ double liblbp_pyr_dotprod(double *vec, uint32_t vec_nDim, uint32_t *img, uint16_
         if(img[LIBLBP_INDEX(y+1,x+1,img_nRows)] < center) pattern = pattern | 0x80;
 
         dot_prod += vec[offset+pattern];
-        offset += 256; 
+        offset += 256;
 
 
       }
     }
-    if(vec_nDim <= offset) 
+    if(vec_nDim <= offset)
       return(dot_prod);
 
 
@@ -170,17 +171,17 @@ double liblbp_pyr_dotprod(double *vec, uint32_t vec_nDim, uint32_t *img, uint16_
     ww = ww/2;
     for(x=0; x < ww; x++)
       for(j=0; j < hh; j++)
-        img[LIBLBP_INDEX(j,x,img_nRows)] = img[LIBLBP_INDEX(j,2*x,img_nRows)] + 
+        img[LIBLBP_INDEX(j,x,img_nRows)] = img[LIBLBP_INDEX(j,2*x,img_nRows)] +
                                           img[LIBLBP_INDEX(j,2*x+1,img_nRows)];
 
     hh = hh/2;
     for(y=0; y < hh; y++)
       for(j=0; j < ww; j++)
-        img[LIBLBP_INDEX(y,j,img_nRows)] = img[LIBLBP_INDEX(2*y,j,img_nRows)] + 
-                                           img[LIBLBP_INDEX(2*y+1,j,img_nRows)];    
+        img[LIBLBP_INDEX(y,j,img_nRows)] = img[LIBLBP_INDEX(2*y,j,img_nRows)] +
+                                           img[LIBLBP_INDEX(2*y+1,j,img_nRows)];
   }
- 
-  
+
+
 }
 
 
@@ -214,11 +215,11 @@ void liblbp_pyr_addvec(int64_t *vec, uint32_t vec_nDim, uint32_t *img, uint16_t 
         if(img[LIBLBP_INDEX(y+1,x+1,img_nRows)] < center) pattern = pattern | 0x80;
 
         vec[offset+pattern]++;
-        offset += 256; 
+        offset += 256;
 
       }
     }
-    if(vec_nDim <= offset) 
+    if(vec_nDim <= offset)
       return;
 
     if(ww % 2 == 1) ww--;
@@ -227,15 +228,15 @@ void liblbp_pyr_addvec(int64_t *vec, uint32_t vec_nDim, uint32_t *img, uint16_t 
     ww = ww/2;
     for(x=0; x < ww; x++)
       for(j=0; j < hh; j++)
-        img[LIBLBP_INDEX(j,x,img_nRows)] = img[LIBLBP_INDEX(j,2*x,img_nRows)] + 
+        img[LIBLBP_INDEX(j,x,img_nRows)] = img[LIBLBP_INDEX(j,2*x,img_nRows)] +
              img[LIBLBP_INDEX(j,2*x+1,img_nRows)];
 
     hh = hh/2;
     for(y=0; y < hh; y++)
       for(j=0; j < ww; j++)
-        img[LIBLBP_INDEX(y,j,img_nRows)] = img[LIBLBP_INDEX(2*y,j,img_nRows)] + 
+        img[LIBLBP_INDEX(y,j,img_nRows)] = img[LIBLBP_INDEX(2*y,j,img_nRows)] +
           img[LIBLBP_INDEX(2*y+1,j,img_nRows)];
-    
+
   }
 
   return;
@@ -273,11 +274,11 @@ void liblbp_pyr_subvec(int64_t *vec, uint32_t vec_nDim, uint32_t *img, uint16_t 
         if(img[LIBLBP_INDEX(y+1,x+1,img_nRows)] < center) pattern = pattern | 0x80;
 
         vec[offset+pattern]--;
-        offset += 256; 
+        offset += 256;
 
       }
     }
-    if(vec_nDim <= offset) 
+    if(vec_nDim <= offset)
       return;
 
     if(ww % 2 == 1) ww--;
@@ -286,15 +287,15 @@ void liblbp_pyr_subvec(int64_t *vec, uint32_t vec_nDim, uint32_t *img, uint16_t 
     ww = ww/2;
     for(x=0; x < ww; x++)
       for(j=0; j < hh; j++)
-        img[LIBLBP_INDEX(j,x,img_nRows)] = img[LIBLBP_INDEX(j,2*x,img_nRows)] + 
+        img[LIBLBP_INDEX(j,x,img_nRows)] = img[LIBLBP_INDEX(j,2*x,img_nRows)] +
           img[LIBLBP_INDEX(j,2*x+1,img_nRows)];
 
     hh = hh/2;
     for(y=0; y < hh; y++)
       for(j=0; j < ww; j++)
-        img[LIBLBP_INDEX(y,j,img_nRows)] = img[LIBLBP_INDEX(2*y,j,img_nRows)] + 
+        img[LIBLBP_INDEX(y,j,img_nRows)] = img[LIBLBP_INDEX(2*y,j,img_nRows)] +
           img[LIBLBP_INDEX(2*y+1,j,img_nRows)];
-    
+
   }
 
   return;
