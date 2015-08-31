@@ -1,0 +1,12 @@
+find_package( OpenCV REQUIRED )
+
+include_directories(
+    ${OpenCV_INCLUDE_DIRS})
+
+file(GLOB TOOL_VIEWER_SRC "source/*.cpp")
+
+add_executable(tool_viewer ${TOOL_VIEWER_SRC} )
+target_link_libraries(tool_viewer ${OpenCV_LIBS})
+set_target_properties(tool_viewer PROPERTIES
+    OUTPUT_NAME "tool_viewer"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" )

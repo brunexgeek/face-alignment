@@ -167,6 +167,7 @@ add_subdirectory(3rd-party/flandmark)
 add_subdirectory(demos/gui)
 add_subdirectory(modules/face-detector)
 add_subdirectory(modules/face-landmark)
+add_subdirectory(tools/viewer)
 
 
 ################################################################################
