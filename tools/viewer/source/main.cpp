@@ -5,10 +5,13 @@
 #include <opencv2/opencv.hpp>
 #include <getopt.h>
 #include <dirent.h>
+#include <cmath>
 
 
 using namespace cv;
 
+
+#define MAX_LONG_EDGE         1000.0
 
 #define INFOBOX_HEIGHT        100
 
@@ -212,15 +215,39 @@ char main_display(
 	const char *fittedFile )
 {
 	char key;
+	int longEdge;
+	float factor = 1;
+	size_t i;
 
 	std::cout << "Displaying " << imageFile << std::endl;
 
 	Mat image = imread(imageFile);
-
 	std::vector<Point> *points = loadPointsFile(pointsFile);
-	main_plotFace(image, points, Scalar(255, 0, 0));
-
 	std::vector<Point> *fitted = loadPointsFile(fittedFile);
+
+	//longEdge = std::max(image.rows, image.cols);
+	longEdge = image.rows;
+	if (longEdge > MAX_LONG_EDGE)
+	{
+		factor = (float)longEdge / MAX_LONG_EDGE;
+		std::cout << "Adjusting to factor " << factor << std::endl;
+		resize(image, image,
+			cv::Size( round( (float)image.cols / factor ), round( (float)image.rows / factor ) ) );
+
+		for (i = 0; points != NULL && i < points->size(); ++i)
+		{
+			(*points)[i].x = round( (float)(*points)[i].x / factor );
+			(*points)[i].y = round( (float)(*points)[i].y / factor );
+		}
+
+		for (i = 0; fitted != NULL && i < fitted->size(); ++i)
+		{
+			(*fitted)[i].x = round( (float)(*fitted)[i].x / factor );
+			(*fitted)[i].y = round( (float)(*fitted)[i].y / factor );
+		}
+	}
+
+	main_plotFace(image, points, Scalar(255, 0, 0));
 	main_plotFace(image, fitted, Scalar(0, 0, 255));
 
 	Rect *bbox = main_computeBoundingBox(*points, 0.2);
