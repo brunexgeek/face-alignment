@@ -168,6 +168,8 @@ add_subdirectory(demos/gui)
 add_subdirectory(modules/face-detector)
 add_subdirectory(modules/face-landmark)
 add_subdirectory(tools/viewer)
+add_subdirectory(tools/test)
+add_subdirectory(tools/train)
 
 
 ################################################################################
