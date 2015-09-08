@@ -154,8 +154,6 @@ namespace dlib
 		src.at<float>(1,0)=p.y;
 		//src.at<float>(2,0)=1.0;
 
-		std::cout << M << std::endl;
-
 		cv::Mat dst = M*src; //USE MATRIX ALGEBRA
 		return cv::Point2f(dst.at<float>(0,0),dst.at<float>(1,0));
 	}
@@ -189,11 +187,14 @@ namespace dlib
             const Mat& b_
         ) :m(m_)
         {
-			b = Point( b_.at<float>(0,0), b_.at<float>(0,1) );
+			b = Point2f( b_.at<float>(0,0), b_.at<float>(1,0) );
+			std::cout << "m_ = " << m_ << std::endl;
+			std::cout << "b_ = " << b_ << std::endl;
+			std::cout << "b = " << b << std::endl;
         }
 
-        const Point operator() (
-            const Point& p
+        const Point2f operator() (
+            const Point2f& p
         ) const
         {
             return m*p + b;
@@ -287,7 +288,7 @@ namespace dlib
 		//std::cout << "P.inv() = " << P.inv(DECOMP_SVD) << std::endl;
 
         Mat m = Q * P.inv(DECOMP_CHOLESKY);
-        //std::cout << "m = " << m << std::endl;
+        std::cout << "m = " << m << std::endl;
         //return point_transform_affine(subm(m,0,0,2,2), colm(m,2));
         return point_transform_affine(
 			m( Range(0, 2), Range(0, 2) ),
@@ -322,14 +323,15 @@ namespace dlib
             << "\n\t to_points.size():   " << to_points.size()
             );*/
 
-        // We use the formulas from the paper: Least-squares estimation of transformation
-        // parameters between two point patterns by Umeyama.  They are equations 34 through
+        // We use the formulas from the paper: "Least-squares estimation of transformation
+        // parameters between two point patterns" by Umeyama.  They are equations 34 through
         // 43.
 
-        /*Point2f mean_from, mean_to;
+        Point2f mean_from, mean_to;
         double sigma_from = 0, sigma_to = 0;
         Mat cov;
 
+		// compute the mean (eq. 34 and 35)
         for (unsigned long i = 0; i < from_points.size(); ++i)
         {
             mean_from += from_points[i];
@@ -338,36 +340,56 @@ namespace dlib
         mean_from = mean_from / from_points.size();
         mean_to   = mean_to / from_points.size();
 
+		// compute the variance and covariance (eq. 36, 37 and 38)
         for (unsigned long i = 0; i < from_points.size(); ++i)
         {
             sigma_from += length_squared(from_points[i] - mean_from);
             sigma_to += length_squared(to_points[i] - mean_to);
-            cov += Mat(to_points[i] - mean_to)* Mat(from_points[i] - mean_from).t();
+            if (cov.rows == 0)
+				cov = Mat(to_points[i] - mean_to)* Mat(from_points[i] - mean_from).t();
+			else
+				cov += Mat(to_points[i] - mean_to)* Mat(from_points[i] - mean_from).t();
         }
-
         sigma_from /= from_points.size();
         sigma_to   /= from_points.size();
         cov        /= from_points.size();
+std::cout << "mean_from = " << mean_from << std::endl;
+std::cout << "mean_to = " << mean_to << std::endl;
+std::cout << "cov = " << cov << std::endl;
+		Mat u, v, s, d;
 
-        Mat u, v, s, d;
-        svd(cov, u,d,v);
-        s = identity_matrix(cov);
-        if (det(cov) < 0 || (det(cov) == 0 && det(u)*det(v)<0))
+		cv::SVD svd;
+		svd.compute(cov, d, u, v);
+		//u = u.t();
+		//v = v.t();
+		// adjust the matrix 'd' to be used above
+		cv::Mat temp = cv::Mat::zeros(2, 2, CV_32F);
+		temp.at<float>(0,0) = d.at<float>(0,1);
+		temp.at<float>(1,1) = d.at<float>(0,0);
+		d = temp;
+
+        //svd(cov, u,d,v);
+std::cout << "u = " << u << std::endl;
+std::cout << "d = " << d << std::endl;
+std::cout << "v = " << v << std::endl;
+        //s = identity_matrix(cov);
+        s = cv::Mat::eye( cov.size(), CV_32F );
+
+        if (cv::determinant(cov) < 0 || (cv::determinant(cov) == 0 && cv::determinant(u)*cv::determinant(v)<0))
         {
-            if (d(1,1) < d(0,0))
-                s(1,1) = -1;
+            if (d.at<float>(1,1) < d.at<float>(0,0))
+                s.at<float>(1,1) = -1;
             else
-                s(0,0) = -1;
+                s.at<float>(0,0) = -1;
         }
 
-        matrix<double,2,2> r = u*s*trans(v);
+        Mat r = u*s*v.t();
         double c = 1;
         if (sigma_from != 0)
-            c = 1.0/sigma_from * trace(d*s);
-        vector<double,2> t = mean_to - c*r*mean_from;
+            c = 1.0 / sigma_from * cv::sum((d*s).diag())[0];
+        Point2f t = mean_to - c*r*mean_from;
 
-        return point_transform_affine(c*r, t);*/
-        return point_transform_affine();
+        return point_transform_affine(c*r, t);
     }
 #if (0)
 // ----------------------------------------------------------------------------------------

@@ -110,7 +110,7 @@ using namespace cv;
                 - returns the idx-th point from the shape vector.
         !*/
         {
-            return Point2f(shape.at<float>(0,idx*2), shape.at<float>(0,idx*2+1));
+            return Point2f(shape.at<float>(0,idx), shape.at<float>(1,idx));
         }
 
     // ------------------------------------------------------------------------------------
@@ -181,7 +181,7 @@ using namespace cv;
         {
             //DLIB_ASSERT(from_shape.size() == to_shape.size() && (from_shape.size()%2) == 0 && from_shape.size() > 0,"");
             std::vector<Point2f> from_points, to_points;
-            const unsigned long num = from_shape.cols/2;
+            const unsigned long num = from_shape.cols;
             from_points.reserve(num);
             to_points.reserve(num);
             if (num == 1)
@@ -281,8 +281,7 @@ using namespace cv;
                 // then map it from the normalized shape space into pixel space.
                 Point p = tform_to_img(tform*reference_pixel_deltas[i] + location(current_shape, reference_pixel_anchor_idx[i]));
                 if (area.contains(p))
-					// FIXME
-                    feature_pixel_values[i] = 1;//get_pixel_intensity(img.at<float>(p.y, p.x));
+                    feature_pixel_values[i] = img.at<float>(p.y, p.x);
                 else
                     feature_pixel_values[i] = 0;
             }
@@ -656,14 +655,18 @@ using namespace cv;
             const FullObjectDetection& obj
         )
         {
-            Mat shape(1, obj.num_parts()*2, CV_32F);
+			// create an matrix of 2xN, where N is the amount of parts
+            Mat shape(2, obj.num_parts(), CV_32F);
+
             const point_transform_affine tform_from_img = impl::normalizing_tform(obj.get_rect());
+
             for (unsigned long i = 0; i < obj.num_parts(); ++i)
             {
                 Point2f p = tform_from_img(obj.part(i));
-                shape.at<float>(0, 2*i)   = p.x;
-                shape.at<float>(0, 2*i+1) = p.y;
+                shape.at<float>(0, i) = p.x;
+                shape.at<float>(1, i) = p.y;
             }
+
             return shape;
         }
 
@@ -953,11 +956,17 @@ using namespace cv;
             const double padding = get_feature_pool_region_padding();
             // Figure figure out the bounds on the object shapes.  We will sample uniformly
             // from this box.
-            Mat temp = reshape(initial_shape, initial_shape.size()/2, 2);
-            const double min_x = min(colm(temp,0))-padding;
-            const double min_y = min(colm(temp,1))-padding;
-            const double max_x = max(colm(temp,0))+padding;
-            const double max_y = max(colm(temp,1))+padding;
+std::cout << initial_shape << std::endl;
+
+			double min_x, max_x;
+			cv::minMaxLoc( initial_shape( Range(0, 1), Range::all() ), &min_x, &max_x );
+			min_x -= padding;
+			max_x -= padding;
+
+			double min_y, max_y;
+			cv::minMaxLoc( initial_shape( Range(1, 2), Range::all() ), &min_y, &max_y );
+			min_y += padding;
+			max_y += padding;
 
             std::vector<std::vector<Point2f > > pixel_coordinates;
             pixel_coordinates.resize(get_cascade_depth());
