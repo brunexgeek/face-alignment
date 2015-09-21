@@ -41,6 +41,22 @@ std::vector<std::vector<double> > get_interocular_distances (
 
 int main(int argc, char** argv)
 {
+	/*cv::Mat cov = cv::Mat(2, 2, CV_64F);
+	cov.at<double>(0,0) = 0.0698383;
+	cov.at<double>(0,1) = -0.000258284;
+	cov.at<double>(1,0) = -0.000258284;
+	cov.at<double>(1,1) = 0.0854685;
+
+	cv::Mat d, u, v;
+	cv::SVD svd;
+	svd.compute(cov.t(), d, u, v);
+	std::cout << "cov = " << cov << std::endl;
+	std::cout << "u = " << u << std::endl;
+	std::cout << "d = " << d << std::endl;
+	std::cout << "v = " << v << std::endl << std::endl;
+
+	return 0;*/
+
     try
     {
         // In this example we are going to train a shape_predictor based on the

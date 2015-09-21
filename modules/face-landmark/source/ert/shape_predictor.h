@@ -121,6 +121,12 @@ using namespace cv;
 	}
 
 
+	float length( const Point2f &p )
+	{
+		return p.x + p.y;
+	}
+
+
         inline unsigned long nearest_shape_point (
             const Mat& shape,
             const Point2f& pt
@@ -715,9 +721,15 @@ using namespace cv;
 
             // walk the tree in breadth first order
             const unsigned long num_split_nodes = static_cast<unsigned long>(std::pow(2.0, (double)get_tree_depth())-1);
+
             std::vector<Mat > sums(num_split_nodes*2+1);
+            for (unsigned long i = 0; i < sums.size(); ++i)
+				sums[i] = cv::Mat::zeros(samples[0].current_shape.rows, samples[0].current_shape.cols, samples[0].current_shape.type());
+
             for (unsigned long i = 0; i < samples.size(); ++i)
-                sums[0] += samples[i].target_shape - samples[i].current_shape;
+            {
+				sums[0] += samples[i].target_shape - samples[i].current_shape;
+			}
 
             for (unsigned long i = 0; i < num_split_nodes; ++i)
             {
@@ -758,17 +770,18 @@ using namespace cv;
         {
             const double lambda = get_lambda();
             impl::SplitFeature feat;
-            /*double accept_prob;
+            double accept_prob;
+            cv::RNG rnd;
             do
             {
                 feat.idx1   = rnd.uniform(0, 0x0FFFFFFF)%get_feature_pool_size();
                 feat.idx2   = rnd.uniform(0, 0x0FFFFFFF)%get_feature_pool_size();
-                const double dist = length(pixel_coordinates[feat.idx1]-pixel_coordinates[feat.idx2]);
+                const double dist = dlib::impl::length(pixel_coordinates[feat.idx1]-pixel_coordinates[feat.idx2]);
                 accept_prob = std::exp(-dist/lambda);
             }
-            while(feat.idx1 == feat.idx2 || !(accept_prob > rnd.get_random_double()));
+            while(feat.idx1 == feat.idx2 || !(accept_prob > rnd.uniform(0.0, 1.0)));
 
-            feat.thresh = (rnd.get_random_double()*256 - 128)/2.0;*/
+            feat.thresh = (rnd.uniform(0.0, 1.0)*256 - 128)/2.0;
 
             return feat;
         }
@@ -785,7 +798,7 @@ using namespace cv;
         {
             // generate a bunch of random splits and test them and return the best one.
 
-            /*const unsigned long num_test_splits = get_num_test_splits();
+            const unsigned long num_test_splits = get_num_test_splits();
 
             // sample the random features we test in this function
             std::vector<impl::SplitFeature> feats;
@@ -805,7 +818,10 @@ using namespace cv;
                 {
                     if (samples[j].feature_pixel_values[feats[i].idx1] - samples[j].feature_pixel_values[feats[i].idx2] > feats[i].thresh)
                     {
-                        left_sums[i] += temp;
+						if (left_sums[i].rows == 0)
+							left_sums[i] = temp;
+						else
+							left_sums[i] += temp;
                         ++left_cnt[i];
                     }
                 }
@@ -822,7 +838,7 @@ using namespace cv;
                 if (left_cnt[i] != 0 && right_cnt != 0)
                 {
                     temp = sum - left_sums[i];
-                    score = left_sums[i].dot(left_sums[i])/left_cnt[i] + dot(temp,temp)/right_cnt;
+                    score = left_sums[i].dot(left_sums[i])/left_cnt[i] + temp.dot(temp)/right_cnt;
                     if (score > best_score)
                     {
                         best_score = score;
@@ -831,18 +847,19 @@ using namespace cv;
                 }
             }
 
-            left_sums[best_feat].swap(left_sum);
-            if (left_sum.size() != 0)
+            cv::swap(left_sums[best_feat], left_sum);
+            //if (left_sum.size() != 0)
+            if (left_sum.rows != 0)
             {
                 right_sum = sum - left_sum;
             }
             else
             {
                 right_sum = sum;
-                left_sum = zeros_matrix(sum);
+                left_sum = cv::Mat::zeros(sum.rows, sum.cols, sum.type());
             }
-            return feats[best_feat];*/
-            return impl::SplitFeature();
+            return feats[best_feat];
+            //return impl::SplitFeature();
         }
 
         unsigned long partition_samples (

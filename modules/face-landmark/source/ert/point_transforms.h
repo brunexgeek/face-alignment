@@ -361,17 +361,17 @@ std::cout << "cov = " << cov << std::endl;
 		cv::SVD svd;
 		svd.compute(cov, d, u, v);
 		//u = u.t();
-		//v = v.t();
+		v = v.t();
 		// adjust the matrix 'd' to be used above
 		cv::Mat temp = cv::Mat::zeros(2, 2, CV_32F);
-		temp.at<float>(0,0) = d.at<float>(0,1);
-		temp.at<float>(1,1) = d.at<float>(0,0);
+		temp.at<float>(1,1) = d.at<float>(0,1);
+		temp.at<float>(0,0) = d.at<float>(0,0);
 		d = temp;
 
         //svd(cov, u,d,v);
 std::cout << "u = " << u << std::endl;
 std::cout << "d = " << d << std::endl;
-std::cout << "v = " << v << std::endl;
+std::cout << "v = " << v << std::endl << std::endl;
         //s = identity_matrix(cov);
         s = cv::Mat::eye( cov.size(), CV_32F );
 
@@ -384,11 +384,13 @@ std::cout << "v = " << v << std::endl;
         }
 
         Mat r = u*s*v.t();
+std::cout << "r = " << r << std::endl;
+std::cout << "s = " << s << std::endl;
         double c = 1;
         if (sigma_from != 0)
             c = 1.0 / sigma_from * cv::sum((d*s).diag())[0];
         Point2f t = mean_to - c*r*mean_from;
-
+std::cout << "c = " << c << std::endl;
         return point_transform_affine(c*r, t);
     }
 #if (0)
