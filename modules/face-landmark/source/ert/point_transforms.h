@@ -14,7 +14,7 @@ namespace dlib
 
 
 // ----------------------------------------------------------------------------------------
-
+#if (0)
     class point_rotator : public ert::Serializable
     {
     public:
@@ -46,11 +46,11 @@ namespace dlib
 
         const Mat get_m() const
         {
-            Mat temp(2,2,CV_32F);
-            temp.at<float>(0,0) = cos_angle;
-            temp.at<float>(0,1) = -sin_angle;
-            temp.at<float>(1,0) = sin_angle;
-            temp.at<float>(1,1) = cos_angle;
+            Mat temp(2,2,CV_64F);
+            temp.at<double>(0,0) = cos_angle;
+            temp.at<double>(0,1) = -sin_angle;
+            temp.at<double>(1,0) = sin_angle;
+            temp.at<double>(1,1) = cos_angle;
             return temp;
         }
 
@@ -62,8 +62,8 @@ namespace dlib
 
         void deserialize( std::istream& in)
         {
-            /*deserialize(item.sin_angle, in);
-            deserialize(item.cos_angle, in);*/
+            //deserialize(item.sin_angle, in);
+            //deserialize(item.cos_angle, in);
         }
 
     private:
@@ -110,11 +110,11 @@ namespace dlib
         const Mat get_m(
         ) const
         {
-            Mat temp(2,2,CV_32F);
-            temp.at<float>(0,0) = cos_angle;
-            temp.at<float>(0,1) = -sin_angle;
-            temp.at<float>(1,0) = sin_angle;
-            temp.at<float>(1,1) = cos_angle;
+            Mat temp(2,2,CV_64F);
+            temp.at<double>(0,0) = cos_angle;
+            temp.at<double>(0,1) = -sin_angle;
+            temp.at<double>(1,0) = sin_angle;
+            temp.at<double>(1,1) = cos_angle;
             return temp;
         }
 
@@ -126,16 +126,16 @@ namespace dlib
 
         inline friend void serialize (const point_transform& item, std::ostream& out)
         {
-            /*serialize(item.sin_angle, out);
-            serialize(item.cos_angle, out);
-            serialize(item.translate, out);*/
+            //serialize(item.sin_angle, out);
+           // serialize(item.cos_angle, out);
+            //serialize(item.translate, out);
         }
 
         inline friend void deserialize (point_transform& item, std::istream& in)
         {
-            /*deserialize(item.sin_angle, in);
-            deserialize(item.cos_angle, in);
-            deserialize(item.translate, in);*/
+            //deserialize(item.sin_angle, in);
+            //deserialize(item.cos_angle, in);
+            //deserialize(item.translate, in);
         }
 
     private:
@@ -143,12 +143,13 @@ namespace dlib
         double cos_angle;
         Point translate;
     };
+#endif
 
 // ----------------------------------------------------------------------------------------
 
 	Point2f operator*(const cv::Mat &M, const cv::Point2f& p)
 	{
-		cv::Mat src(2/*rows*/,1 /* cols */,CV_32F);
+		cv::Mat src(2/*rows*/,1 /* cols */,CV_64F);
 
 		src.at<float>(0,0)=p.x;
 		src.at<float>(1,0)=p.y;
@@ -187,7 +188,7 @@ namespace dlib
             const Mat& b_
         ) :m(m_)
         {
-			b = Point2f( b_.at<float>(0,0), b_.at<float>(1,0) );
+			b = Point2f( b_.at<double>(0,0), b_.at<double>(1,0) );
 			std::cout << "m_ = " << m_ << std::endl;
 			std::cout << "b_ = " << b_ << std::endl;
 			std::cout << "b = " << b << std::endl;
@@ -269,17 +270,17 @@ namespace dlib
             << "\n\t to_points.size():   " << to_points.size()
             );*/
 
-        Mat P(3, from_points.size(), CV_32F);
-        Mat Q(2, from_points.size(), CV_32F);
+        Mat P(3, from_points.size(), CV_64F);
+        Mat Q(2, from_points.size(), CV_64F);
 
         for (unsigned long i = 0; i < from_points.size(); ++i)
         {
-            P.at<float>(0,i) = from_points[i].x;
-            P.at<float>(1,i) = from_points[i].y;
-            P.at<float>(2,i) = 1;
+            P.at<double>(0,i) = from_points[i].x;
+            P.at<double>(1,i) = from_points[i].y;
+            P.at<double>(2,i) = 1;
 
-            Q.at<float>(0,i) = to_points[i].x;
-            Q.at<float>(1,i) = to_points[i].y;
+            Q.at<double>(0,i) = to_points[i].x;
+            Q.at<double>(1,i) = to_points[i].y;
         }
 
 		//std::cout << "P = " << P << std::endl;
@@ -309,6 +310,9 @@ namespace dlib
 		return p.x * p.x + p.y * p.y;
 	}
 
+	/**
+	 * Compute the transform affine matrix that transform the 'from' points to the 'to' points.
+	 */
     point_transform_affine find_similarity_transform (
         const std::vector<Point2f>& from_points,
         const std::vector<Point2f>& to_points
@@ -363,9 +367,9 @@ std::cout << "cov = " << cov << std::endl;
 		//u = u.t();
 		v = v.t();
 		// adjust the matrix 'd' to be used above
-		cv::Mat temp = cv::Mat::zeros(2, 2, CV_32F);
-		temp.at<float>(1,1) = d.at<float>(0,1);
-		temp.at<float>(0,0) = d.at<float>(0,0);
+		cv::Mat temp = cv::Mat::zeros(2, 2, CV_64F);
+		temp.at<double>(1,1) = d.at<double>(0,1);
+		temp.at<double>(0,0) = d.at<double>(0,0);
 		d = temp;
 
         //svd(cov, u,d,v);
@@ -373,14 +377,14 @@ std::cout << "u = " << u << std::endl;
 std::cout << "d = " << d << std::endl;
 std::cout << "v = " << v << std::endl << std::endl;
         //s = identity_matrix(cov);
-        s = cv::Mat::eye( cov.size(), CV_32F );
+        s = cv::Mat::eye( cov.size(), CV_64F );
 
         if (cv::determinant(cov) < 0 || (cv::determinant(cov) == 0 && cv::determinant(u)*cv::determinant(v)<0))
         {
-            if (d.at<float>(1,1) < d.at<float>(0,0))
-                s.at<float>(1,1) = -1;
+            if (d.at<double>(1,1) < d.at<double>(0,0))
+                s.at<double>(1,1) = -1;
             else
-                s.at<float>(0,0) = -1;
+                s.at<double>(0,0) = -1;
         }
 
         Mat r = u*s*v.t();

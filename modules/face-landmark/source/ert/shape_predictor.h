@@ -127,56 +127,62 @@ using namespace cv;
 	}
 
 
-        inline unsigned long nearest_shape_point (
-            const Mat& shape,
-            const Point2f& pt
-        )
-        {
-            // find the nearest part of the shape to this pixel
-            float best_dist = std::numeric_limits<float>::infinity();
-            const unsigned long num_shape_parts = shape.cols / 2;
-            unsigned long best_idx = 0;
-            for (unsigned long j = 0; j < num_shape_parts; ++j)
-            {
-                const float dist = length_squared(location(shape,j)-pt);
-                if (dist < best_dist)
-                {
-                    best_dist = dist;
-                    best_idx = j;
-                }
-            }
-            return best_idx;
-        }
+	/**
+	 * Find the nearest part of the shape to this pixel
+	 */
+	inline unsigned long nearest_shape_point (
+		const Mat& shape,
+		const Point2f& pt
+	)
+	{
+		float best_dist = std::numeric_limits<float>::infinity();
+		const unsigned long num_shape_parts = shape.cols / 2;
+		unsigned long best_idx = 0;
+		for (unsigned long j = 0; j < num_shape_parts; ++j)
+		{
+			const float dist = length_squared(location(shape,j)-pt);
+			if (dist < best_dist)
+			{
+				best_dist = dist;
+				best_idx = j;
+			}
+		}
+		return best_idx;
+	}
 
     // ------------------------------------------------------------------------------------
 
-        inline void create_shape_relative_encoding (
-            const Mat& shape,
-            const std::vector<Point2f> &pixel_coordinates,
-            std::vector<unsigned long>& anchor_idx,
-            std::vector<Point2f>& deltas
-        )
-        /*!
-            requires
-                - shape.size()%2 == 0
-                - shape.size() > 0
-            ensures
-                - #anchor_idx.size() == pixel_coordinates.size()
-                - #deltas.size()     == pixel_coordinates.size()
-                - for all valid i:
-                    - pixel_coordinates[i] == location(shape,#anchor_idx[i]) + #deltas[i]
-        !*/
-        {
-            anchor_idx.resize(pixel_coordinates.size());
-            deltas.resize(pixel_coordinates.size());
+	/**
+	 * Given an array of image pixel coordinates, computes the delta between that
+	 * coordinate to the nearest part in the shape.
+	 */
+	inline void create_shape_relative_encoding (
+		const Mat& shape,
+		const std::vector<Point2f> &pixel_coordinates,
+		std::vector<unsigned long>& anchor_idx,
+		std::vector<Point2f>& deltas
+	)
+	/*!
+		requires
+			- shape.size()%2 == 0
+			- shape.size() > 0
+		ensures
+			- #anchor_idx.size() == pixel_coordinates.size()
+			- #deltas.size()     == pixel_coordinates.size()
+			- for all valid i:
+				- pixel_coordinates[i] == location(shape,#anchor_idx[i]) + #deltas[i]
+	!*/
+	{
+		anchor_idx.resize(pixel_coordinates.size());
+		deltas.resize(pixel_coordinates.size());
 
 
-            for (unsigned long i = 0; i < pixel_coordinates.size(); ++i)
-            {
-                anchor_idx[i] = nearest_shape_point(shape, pixel_coordinates[i]);
-                deltas[i] = pixel_coordinates[i] - location(shape,anchor_idx[i]);
-            }
-        }
+		for (unsigned long i = 0; i < pixel_coordinates.size(); ++i)
+		{
+			anchor_idx[i] = nearest_shape_point(shape, pixel_coordinates[i]);
+			deltas[i] = pixel_coordinates[i] - location(shape,anchor_idx[i]);
+		}
+	}
 
     // ------------------------------------------------------------------------------------
 
@@ -297,10 +303,9 @@ using namespace cv;
 
 // ----------------------------------------------------------------------------------------
 
-    class ShapePredictor
-    {
-    public:
-
+class ShapePredictor
+{
+	public:
 
         ShapePredictor ()
         {
@@ -389,20 +394,19 @@ using namespace cv;
         std::vector<std::vector<impl::RegressionTree> > forests;
         std::vector<std::vector<unsigned long> > anchor_idx;
         std::vector<std::vector<Point2f> > deltas;
-    };
+};
 
 // ----------------------------------------------------------------------------------------
 
-    class ShapePredictorTrainer
-    {
+class ShapePredictorTrainer
+{
         /*!
             This thing really only works with unsigned char or rgb_pixel images (since we assume the threshold
             should be in the range [-128,128]).
         !*/
     public:
 
-        ShapePredictorTrainer (
-        )
+        ShapePredictorTrainer ( )
         {
             _cascade_depth = 10;
             _tree_depth = 4;
@@ -573,8 +577,9 @@ using namespace cv;
                 << "\n\t images.size():  " << images.size()
                 << "\n\t objects.size(): " << objects.size()
             );*/
+
             // make sure the objects agree on the number of parts and that there is at
-            // least one full_object_detection.
+            // least one FullObjectDetection.
             unsigned long num_parts = 0;
             for (unsigned long i = 0; i < objects.size(); ++i)
             {
@@ -608,8 +613,12 @@ using namespace cv;
 
             //rnd.set_seed(get_random_seed());
 
-            std::vector<training_sample> samples;
+            std::vector<TrainingSample> samples;
+
+            // compute the initial shape guests for each training sample
             const Mat initial_shape = populate_training_sample_shapes(objects, samples);
+
+
             const std::vector<std::vector<Point2f > > pixel_coordinates = randomly_sample_pixel_coordinates(initial_shape);
 
             unsigned long trees_fit_so_far = 0;
@@ -618,6 +627,7 @@ using namespace cv;
                 std::cout << "Fitting trees..." << std::endl;
 
             std::vector<std::vector<impl::RegressionTree> > forests(get_cascade_depth());
+
             // Now start doing the actual training by filling in the forests
             for (unsigned long cascade = 0; cascade < get_cascade_depth(); ++cascade)
             {
@@ -662,7 +672,7 @@ using namespace cv;
         )
         {
 			// create an matrix of 2xN, where N is the amount of parts
-            Mat shape(2, obj.num_parts(), CV_32F);
+            Mat shape(2, obj.num_parts(), CV_64F);
 
             const point_transform_affine tform_from_img = impl::normalizing_tform(obj.get_rect());
 
@@ -676,40 +686,40 @@ using namespace cv;
             return shape;
         }
 
-        struct training_sample
-        {
-            /*!
+struct TrainingSample
+{
+	/*!
 
-            CONVENTION
-                - feature_pixel_values.size() == get_feature_pool_size()
-                - feature_pixel_values[j] == the value of the j-th feature pool
-                  pixel when you look it up relative to the shape in current_shape.
+	CONVENTION
+		- feature_pixel_values.size() == get_feature_pool_size()
+		- feature_pixel_values[j] == the value of the j-th feature pool
+		  pixel when you look it up relative to the shape in current_shape.
 
-                - target_shape == The truth shape.  Stays constant during the whole
-                  training process.
-                - rect == the position of the object in the image_idx-th image.  All shape
-                  coordinates are coded relative to this rectangle.
-            !*/
+		- target_shape == The truth shape.  Stays constant during the whole
+		  training process.
+		- rect == the position of the object in the image_idx-th image.  All shape
+		  coordinates are coded relative to this rectangle.
+	!*/
 
-            unsigned long image_idx;
-            Rect rect;
-            Mat target_shape;
+	unsigned long image_idx;
+	Rect rect;
+	Mat target_shape;
 
-            Mat current_shape;
-            std::vector<float> feature_pixel_values;
+	Mat current_shape;
+	std::vector<float> feature_pixel_values;
 
-            void swap(training_sample& item)
-            {
-                std::swap(image_idx, item.image_idx);
-                std::swap(rect, item.rect);
-                cv::swap(target_shape, item.target_shape);
-                cv::swap(current_shape, item.current_shape);
-                feature_pixel_values.swap(item.feature_pixel_values);
-            }
-        };
+	void swap(TrainingSample& item)
+	{
+		std::swap(image_idx, item.image_idx);
+		std::swap(rect, item.rect);
+		cv::swap(target_shape, item.target_shape);
+		cv::swap(current_shape, item.current_shape);
+		feature_pixel_values.swap(item.feature_pixel_values);
+	}
+};
 
         impl::RegressionTree make_regression_tree (
-            std::vector<training_sample>& samples,
+            std::vector<TrainingSample>& samples,
             const std::vector<Point2f >& pixel_coordinates
         ) const
         {
@@ -754,7 +764,7 @@ using namespace cv;
                 if (parts[i].second != parts[i].first)
                     tree.leaf_values[i] = sums[num_split_nodes+i]*get_nu()/(parts[i].second - parts[i].first);
                 else
-                    tree.leaf_values[i] = Mat::zeros(samples[0].target_shape.rows, samples[0].target_shape.cols, CV_32F);//zeros_matrix(samples[0].target_shape);
+                    tree.leaf_values[i] = Mat::zeros(samples[0].target_shape.rows, samples[0].target_shape.cols, CV_64F);//zeros_matrix(samples[0].target_shape);
 
                 // now adjust the current shape based on these predictions
                 for (unsigned long j = parts[i].first; j < parts[i].second; ++j)
@@ -764,6 +774,9 @@ using namespace cv;
             return tree;
         }
 
+		/**
+		 * Create an split feature with randomly generated threshold.
+		 */
         impl::SplitFeature randomly_generate_split_feature (
             const std::vector<Point2f >& pixel_coordinates
         ) const
@@ -786,8 +799,12 @@ using namespace cv;
             return feat;
         }
 
+
+		/**
+		 * Generate a bunch of random splits, test them and return the best one.
+		 */
         impl::SplitFeature generate_split (
-            const std::vector<training_sample>& samples,
+            const std::vector<TrainingSample>& samples,
             unsigned long begin,
             unsigned long end,
             const std::vector<Point2f >& pixel_coordinates,
@@ -796,8 +813,6 @@ using namespace cv;
             Mat& right_sum
         ) const
         {
-            // generate a bunch of random splits and test them and return the best one.
-
             const unsigned long num_test_splits = get_num_test_splits();
 
             // sample the random features we test in this function
@@ -862,16 +877,19 @@ using namespace cv;
             //return impl::SplitFeature();
         }
 
+		/**
+		 * Splits samples based on split (sorta like in quick sort) and returns the mid
+         * point.  make sure you return the mid in a way compatible with how we walk
+         * through the tree.
+		 */
         unsigned long partition_samples (
             const impl::SplitFeature& split,
-            std::vector<training_sample>& samples,
+            std::vector<TrainingSample>& samples,
             unsigned long begin,
             unsigned long end
         ) const
         {
-            // splits samples based on split (sorta like in quick sort) and returns the mid
-            // point.  make sure you return the mid in a way compatible with how we walk
-            // through the tree.
+            //
 
             unsigned long i = begin;
             for (unsigned long j = begin; j < end; ++j)
@@ -889,23 +907,26 @@ using namespace cv;
 
         Mat populate_training_sample_shapes(
             const std::vector<std::vector<FullObjectDetection> >& objects,
-            std::vector<training_sample>& samples
+            std::vector<TrainingSample>& samples
         ) const
         {
             samples.clear();
             Mat mean_shape;
             long count = 0;
+
             // first fill out the target shapes
             for (unsigned long i = 0; i < objects.size(); ++i)
             {
                 for (unsigned long j = 0; j < objects[i].size(); ++j)
                 {
-                    training_sample sample;
+                    TrainingSample sample;
                     sample.image_idx = i;
                     sample.rect = objects[i][j].get_rect();
                     sample.target_shape = object_to_shape(objects[i][j]);
                     for (unsigned long itr = 0; itr < get_oversampling_amount(); ++itr)
                         samples.push_back(sample);
+
+                    // sum the current shape to the mean shape
                     if (mean_shape.rows == 0)
 						mean_shape = sample.target_shape;
 					else
@@ -914,6 +935,7 @@ using namespace cv;
                 }
             }
 
+			// compute the mean shape
             mean_shape /= count;
 
             // now go pick random initial shapes
@@ -936,7 +958,6 @@ using namespace cv;
                     samples[i].current_shape = alpha*samples[rand_idx].target_shape + (1-alpha)*samples[rand_idx2].target_shape;
                 }
             }
-
 
             return mean_shape;
         }
@@ -1013,12 +1034,10 @@ std::cout << initial_shape << std::endl;
 // ----------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------
 
-    template <
-        typename image_array
-        >
+
     double test_shape_predictor (
         const ShapePredictor& sp,
-        const image_array& images,
+        const std::vector<Mat>& images,
         const std::vector<std::vector<FullObjectDetection> >& objects,
         const std::vector<std::vector<double> >& scales
     )
@@ -1056,25 +1075,29 @@ std::cout << initial_shape << std::endl;
 #endif
 
         //running_stats<double> rs;
+        double rs = 0;
+        int count = 0;
         for (unsigned long i = 0; i < objects.size(); ++i)
         {
             for (unsigned long j = 0; j < objects[i].size(); ++j)
             {
                 // Just use a scale of 1 (i.e. no scale at all) if the caller didn't supply
                 // any scales.
-                /*const double scale = scales.size()==0 ? 1 : scales[i][j];
+                const double scale = scales.size()==0 ? 1 : scales[i][j];
 
-                FullObjectDetection det = sp(images[i], objects[i][j].get_rect());
+                FullObjectDetection det = sp.detect(images[i], objects[i][j].get_rect());
 
                 for (unsigned long k = 0; k < det.num_parts(); ++k)
                 {
-                    //double score = length(det.part(k) - objects[i][j].part(k))/scale;
+                    double score = dlib::impl::length(det.part(k) - objects[i][j].part(k))/scale;
+                    rs += score;
+                    ++count;
                     //rs.add(score);
-                }*/
+                }
             }
         }
         //return rs.mean();
-        return 0;
+        return rs / count;
     }
 
 // ----------------------------------------------------------------------------------------
