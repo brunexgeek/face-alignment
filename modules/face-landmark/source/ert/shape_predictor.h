@@ -110,20 +110,20 @@ using namespace cv;
                 - returns the idx-th point from the shape vector.
         !*/
         {
-            return Point2f(shape.at<float>(0,idx), shape.at<float>(1,idx));
+            return Point2f(shape.at<double>(0,idx), shape.at<double>(1,idx));
         }
 
     // ------------------------------------------------------------------------------------
 
-	float length_squared( const Point2f &p )
+	double length_squared( const Point2f &p )
 	{
-		return p.x * p.x + p.y * p.y;
+		return (double)p.x * (double)p.x + (double)p.y * (double)p.y;
 	}
 
 
-	float length( const Point2f &p )
+	double length( const Point2f &p )
 	{
-		return p.x + p.y;
+		return (double)p.x + (double)p.y;
 	}
 
 
@@ -280,6 +280,7 @@ using namespace cv;
                       current_shape rather than reference_shape.
         !*/
         {
+			//assert(img.type() == CV_32F);
             const Mat tform = find_tform_between_shapes(reference_shape, current_shape).get_m();
             const point_transform_affine tform_to_img = unnormalizing_tform(rect);
 
@@ -678,9 +679,13 @@ class ShapePredictorTrainer
 
             for (unsigned long i = 0; i < obj.num_parts(); ++i)
             {
-                Point2f p = tform_from_img(obj.part(i));
-                shape.at<float>(0, i) = p.x;
-                shape.at<float>(1, i) = p.y;
+				Point2f w = obj.part(i);
+				w.x = cvRound(w.x);
+				w.y = cvRound(w.y);
+
+                Point2f p = tform_from_img(/*obj.part(i)*/w);
+                shape.at<double>(0, i) = p.x;
+                shape.at<double>(1, i) = p.y;
             }
 
             return shape;
@@ -923,6 +928,7 @@ struct TrainingSample
                     sample.image_idx = i;
                     sample.rect = objects[i][j].get_rect();
                     sample.target_shape = object_to_shape(objects[i][j]);
+
                     for (unsigned long itr = 0; itr < get_oversampling_amount(); ++itr)
                         samples.push_back(sample);
 
@@ -938,6 +944,8 @@ struct TrainingSample
 			// compute the mean shape
             mean_shape /= count;
 
+            RNG rnd;
+
             // now go pick random initial shapes
             for (unsigned long i = 0; i < samples.size(); ++i)
             {
@@ -951,7 +959,6 @@ struct TrainingSample
                 {
                     // Pick a random convex combination of two of the target shapes and use
                     // that as the initial shape for this sample.
-                    RNG rnd;
                     const unsigned long rand_idx = rnd.uniform(0, 0x0FFFFFFF) % samples.size();
                     const unsigned long rand_idx2 = rnd.uniform(0, 0x0FFFFFFF) % samples.size();
                     const double alpha = rnd.uniform(0.0, 1.0);
@@ -982,8 +989,8 @@ struct TrainingSample
             pixel_coordinates.resize(get_feature_pool_size());
             for (unsigned long i = 0; i < get_feature_pool_size(); ++i)
             {
-                pixel_coordinates[i].x = rnd.uniform(0.0, 1.0)*(max_x-min_x) + min_x;
-                pixel_coordinates[i].y = rnd.uniform(0.0, 1.0)*(max_y-min_y) + min_y;
+                pixel_coordinates[i].x = (max_x-min_x) + min_x;//rnd.uniform(0.0, 1.0)*(max_x-min_x) + min_x;
+                pixel_coordinates[i].y = (max_y-min_y) + min_y;//rnd.uniform(0.0, 1.0)*(max_y-min_y) + min_y;
             }
         }
 
@@ -994,7 +1001,6 @@ struct TrainingSample
             const double padding = get_feature_pool_region_padding();
             // Figure figure out the bounds on the object shapes.  We will sample uniformly
             // from this box.
-std::cout << initial_shape << std::endl;
 
 			double min_x, max_x;
 			cv::minMaxLoc( initial_shape( Range(0, 1), Range::all() ), &min_x, &max_x );

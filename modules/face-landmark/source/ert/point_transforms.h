@@ -151,12 +151,12 @@ namespace dlib
 	{
 		cv::Mat src(2/*rows*/,1 /* cols */,CV_64F);
 
-		src.at<float>(0,0)=p.x;
-		src.at<float>(1,0)=p.y;
+		src.at<double>(0,0)=p.x;
+		src.at<double>(1,0)=p.y;
 		//src.at<float>(2,0)=1.0;
 
 		cv::Mat dst = M*src; //USE MATRIX ALGEBRA
-		return cv::Point2f(dst.at<float>(0,0),dst.at<float>(1,0));
+		return cv::Point2f(dst.at<double>(0,0),dst.at<double>(1,0));
 	}
 
 	Point2f operator+( const cv::Point2f& p1, const cv::Point2f& p2 )
@@ -189,9 +189,9 @@ namespace dlib
         ) :m(m_)
         {
 			b = Point2f( b_.at<double>(0,0), b_.at<double>(1,0) );
-			std::cout << "m_ = " << m_ << std::endl;
+			/*std::cout << "m_ = " << m_ << std::endl;
 			std::cout << "b_ = " << b_ << std::endl;
-			std::cout << "b = " << b << std::endl;
+			std::cout << "b = " << b << std::endl;*/
         }
 
         const Point2f operator() (
@@ -283,13 +283,13 @@ namespace dlib
             Q.at<double>(1,i) = to_points[i].y;
         }
 
-		//std::cout << "P = " << P << std::endl;
-		//std::cout << "Q = " << Q << std::endl;
+//std::cout << "P = " << P << std::endl;
+//std::cout << "Q = " << Q << std::endl;
 
-		//std::cout << "P.inv() = " << P.inv(DECOMP_SVD) << std::endl;
+//std::cout << "P.inv() = " << P.inv(DECOMP_SVD) << std::endl;
 
-        Mat m = Q * P.inv(DECOMP_CHOLESKY);
-        std::cout << "m = " << m << std::endl;
+        Mat m = Q * P.inv(DECOMP_SVD);
+//std::cout << "m = " << m << std::endl;
         //return point_transform_affine(subm(m,0,0,2,2), colm(m,2));
         return point_transform_affine(
 			m( Range(0, 2), Range(0, 2) ),
@@ -305,9 +305,9 @@ namespace dlib
 	}
 
 
-	float length_squared( const Point2f &p )
+	double length_squared( const Point2f &p )
 	{
-		return p.x * p.x + p.y * p.y;
+		return (double)p.x * (double)p.x + (double)p.y * (double)p.y;
 	}
 
 	/**
@@ -357,25 +357,31 @@ namespace dlib
         sigma_from /= from_points.size();
         sigma_to   /= from_points.size();
         cov        /= from_points.size();
-std::cout << "mean_from = " << mean_from << std::endl;
+/*std::cout << "mean_from = " << mean_from << std::endl;
 std::cout << "mean_to = " << mean_to << std::endl;
-std::cout << "cov = " << cov << std::endl;
+std::cout << "cov = " << cov << std::endl;*/
 		Mat u, v, s, d;
 
 		cv::SVD svd;
 		svd.compute(cov, d, u, v);
+		d.convertTo(d, CV_64F);
+		u.convertTo(u, CV_64F);
+		v.convertTo(v, CV_64F);
 		//u = u.t();
-		v = v.t();
+		//v = v.t();
 		// adjust the matrix 'd' to be used above
 		cv::Mat temp = cv::Mat::zeros(2, 2, CV_64F);
 		temp.at<double>(1,1) = d.at<double>(0,1);
 		temp.at<double>(0,0) = d.at<double>(0,0);
 		d = temp;
 
+		u( cv::Range::all(), cv::Range(1,2) ) *= -1;
+		v( cv::Range(1,2), cv::Range::all() ) *= -1;
+
         //svd(cov, u,d,v);
-std::cout << "u = " << u << std::endl;
+/*std::cout << "u = " << u << std::endl;
 std::cout << "d = " << d << std::endl;
-std::cout << "v = " << v << std::endl << std::endl;
+std::cout << "v = " << v << std::endl << std::endl;*/
         //s = identity_matrix(cov);
         s = cv::Mat::eye( cov.size(), CV_64F );
 
@@ -387,14 +393,19 @@ std::cout << "v = " << v << std::endl << std::endl;
                 s.at<double>(0,0) = -1;
         }
 
-        Mat r = u*s*v.t();
-std::cout << "r = " << r << std::endl;
-std::cout << "s = " << s << std::endl;
+//std::cout << "trace(d*s) = " << cv::sum((d*s).diag())[0] << std::endl;
+
+        Mat r = (u*s)*v.t();
+//std::cout << "r = " << r << std::endl;
+//std::cout << "s = " << s << std::endl;
         double c = 1;
         if (sigma_from != 0)
-            c = 1.0 / sigma_from * cv::sum((d*s).diag())[0];
+        {
+			c = cv::sum((d*s).diag())[0];
+            c = 1.0 / sigma_from * c;
+		}
         Point2f t = mean_to - c*r*mean_from;
-std::cout << "c = " << c << std::endl;
+//std::cout << "c = " << c << std::endl;
         return point_transform_affine(c*r, t);
     }
 #if (0)

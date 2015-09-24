@@ -96,7 +96,11 @@ int main(int argc, char** argv)
         std::vector<FullObjectDetection> face_train, face_test;
 
         image_train = imread("/media/dados/mestrado/300w-helen/trainset/100032540_1.jpg");
-        image_train = imread("/media/dados/mestrado/300w-helen/trainset/100032540_1.jpg");
+        image_test = imread("/media/dados/mestrado/300w-helen/trainset/100032540_1.jpg");
+        cv::cvtColor(image_train, image_train, CV_BGR2GRAY);
+        cv::cvtColor(image_test, image_test, CV_BGR2GRAY);
+        image_train -= 128;
+        image_test -= 128;
 		face_train.push_back( FullObjectDetection("/media/dados/mestrado/300w-helen/trainset/100032540_1.pts") );
 		face_test.push_back( FullObjectDetection("/media/dados/mestrado/300w-helen/trainset/100032540_1.pts") );
 
@@ -216,13 +220,13 @@ std::vector<std::vector<double> > get_interocular_distances (
 )
 {
     std::vector<std::vector<double> > temp(objects.size());
-    /*for (unsigned long i = 0; i < objects.size(); ++i)
+    for (unsigned long i = 0; i < objects.size(); ++i)
     {
         for (unsigned long j = 0; j < objects[i].size(); ++j)
         {
             temp[i].push_back(interocular_distance(objects[i][j]));
         }
-    }*/
+    }
     return temp;
 }
 
