@@ -21,6 +21,8 @@
 #include "../../../modules/face-landmark/source/ert/shape_predictor.h"
 
 #include <iostream>
+#include <fstream>
+#include <cstring>
 
 using namespace dlib;
 using namespace std;
@@ -28,7 +30,7 @@ using namespace std;
 
 
 std::vector<std::vector<double> > get_interocular_distances (
-    const std::vector<std::vector<FullObjectDetection> >& objects
+    const std::vector<std::vector<FullObjectDetection*> >& objects
 );
 /*!
     ensures
@@ -37,7 +39,49 @@ std::vector<std::vector<double> > get_interocular_distances (
               by objects[i][j].
 !*/
 
-// ----------------------------------------------------------------------------------------
+
+
+void main_loadData(
+	const std::string &script,
+	std::vector<Mat*> &images,
+	std::vector<std::vector<FullObjectDetection*> > &annots  )
+{
+	char line[128];
+	int imageCount = 0;
+
+	ifstream list(script.c_str());
+
+	// read the amount of files
+	list.getline(line, sizeof(line));
+	imageCount = atoi(line);
+
+	images.resize(imageCount);
+	annots.resize(imageCount);
+
+	for (int i = 0; i < imageCount; ++i)
+	{
+		// load the image
+		list.getline(line, sizeof(line) - 5);
+		std::cout << "Loading " << line << std::endl;
+		cv::Mat current;
+		cv::cvtColor(imread(line), current, CV_BGR2GRAY);
+		images[i] = new cv::Mat(current);
+		// load the annotations
+		int pos = strrchr(line, '.') - line;
+		if (pos >= 0)
+		{
+			line[pos] = 0;
+			strcat(line, ".pts");
+		}
+		else
+			return;
+		std::vector<FullObjectDetection*> annot;
+		annot.push_back( new FullObjectDetection(line) );
+		annots[i] = annot;
+	}
+}
+
+
 
 int main(int argc, char** argv)
 {
@@ -73,40 +117,11 @@ int main(int argc, char** argv)
             cout << endl;
             return 0;
         }
-        const std::string faces_directory = argv[1];
-        // The faces directory contains a training dataset and a separate
-        // testing dataset.  The training data consists of 4 images, each
-        // annotated with rectangles that bound each human face along with 68
-        // face landmarks on each face.  The idea is to use this training data
-        // to learn to identify the position of landmarks on human faces in new
-        // images.
-        //
-        // Once you have trained a shape_predictor it is always important to
-        // test it on data it wasn't trained on.  Therefore, we will also load
-        // a separate testing set of 5 images.  Once we have a shape_predictor
-        // created from the training data we will see how well it works by
-        // running it on the testing images.
-        //
-        // So here we create the variables that will hold our dataset.
-        // images_train will hold the 4 training images and faces_train holds
-        // the locations and poses of each face in the training images.  So for
-        // example, the image images_train[0] has the faces given by the
-        // full_object_detections in faces_train[0].
-        Mat image_train, image_test, image;
-        std::vector<FullObjectDetection> face_train, face_test;
+        const std::string script = argv[1];
 
-        image = imread("/media/dados/mestrado/300w-helen/trainset/100032540_1.jpg");
-        cv::cvtColor(image, image_train, CV_RGB2GRAY);
-        image_test = imread("/media/dados/mestrado/300w-helen/trainset/100032540_1.jpg");
-        cv::cvtColor(image, image_test, CV_RGB2GRAY);
-
-        cv::imshow("Image", image_train);
-
-        //image_train -= 128;
-        //image_test -= 128;
-		face_train.push_back( FullObjectDetection("/media/dados/mestrado/300w-helen/trainset/100032540_1.pts") );
-		face_test.push_back( FullObjectDetection("/media/dados/mestrado/300w-helen/trainset/100032540_1.pts") );
-
+		std::vector<Mat*> images_train, &images_test = images_train;
+		std::vector<std::vector<FullObjectDetection*> > annots_train, &annots_test = annots_train;
+		main_loadData(script, images_train, annots_train);
 
         // Now we load the data.  These XML files list the images in each
         // dataset and also contain the positions of the face boxes and
@@ -144,19 +159,7 @@ int main(int argc, char** argv)
         trainer.be_verbose();
 
         // Now finally generate the shape model
-        std::vector<Mat> images_train;
-        images_train.push_back(image_train);
-
-        std::vector<Mat> images_test;
-        images_test.push_back(image_test);
-
-		std::vector<std::vector<FullObjectDetection> > faces_train;
-        faces_train.push_back(face_train);
-
-		std::vector<std::vector<FullObjectDetection> > faces_test;
-        faces_test.push_back(face_test);
-
-        ShapePredictor sp = trainer.train( images_train, faces_train);
+        ShapePredictor sp = trainer.train( images_train, annots_train);
 
 
         // Now that we have a model we can test it.  This function measures the
@@ -167,7 +170,7 @@ int main(int argc, char** argv)
         // distances by the interocular distance, as is customary when
         // evaluating face landmarking systems.
         cout << "mean training error: "<<
-            test_shape_predictor(sp, images_train, faces_train, get_interocular_distances(faces_train)) << endl;
+            test_shape_predictor(sp, images_train, annots_train, get_interocular_distances(annots_train)) << endl;
 
         // The real test is to see how well it does on data it wasn't trained
         // on.  We trained it on a very small dataset so the accuracy is not
@@ -175,11 +178,11 @@ int main(int argc, char** argv)
         // train it on one of the large face landmarking datasets you will
         // obtain state-of-the-art results, as shown in the Kazemi paper.
         cout << "mean testing error:  "<<
-            test_shape_predictor(sp, images_test, faces_test, get_interocular_distances(faces_test)) << endl;
+            test_shape_predictor(sp, images_train, annots_train, get_interocular_distances(annots_train)) << endl;
 
 
-		char key;
-		do { key = cv::waitKey(0); } while (key != 0x27);
+		/*char key;
+		do { key = cv::waitKey(0); } while (key != 0x27);*/
 
         // Finally, we save the model to disk so we can use it later.
         //serialize("sp.dat") << sp;
@@ -219,11 +222,12 @@ double interocular_distance (
     r = r / cnt;
 
     // Now return the distance between the centers of the eyes
+std::cout << cv::norm(l-r) << std::endl;
     return cv::norm(l-r);
 }
 
 std::vector<std::vector<double> > get_interocular_distances (
-    const std::vector<std::vector<FullObjectDetection> >& objects
+    const std::vector<std::vector<FullObjectDetection*> >& objects
 )
 {
     std::vector<std::vector<double> > temp(objects.size());
@@ -231,7 +235,7 @@ std::vector<std::vector<double> > get_interocular_distances (
     {
         for (unsigned long j = 0; j < objects[i].size(); ++j)
         {
-            temp[i].push_back(interocular_distance(objects[i][j]));
+            temp[i].push_back(interocular_distance(*objects[i][j]));
         }
     }
     return temp;

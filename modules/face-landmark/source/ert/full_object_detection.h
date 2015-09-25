@@ -34,7 +34,7 @@ using namespace cv;
 			FullObjectDetection( const char *fileName )
 			{
 				loadPointsFile(fileName);
-				computeBoundingBox(0.0);
+				computeBoundingBox(0.1);
 			}
 
 			FullObjectDetection()

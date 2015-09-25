@@ -7,8 +7,10 @@
 #include "full_object_detection.h"
 #include <opencv2/opencv.hpp>
 #include "point_transforms.h"
+#include "console_progress_indicator.h"
 #include "serialize.h"
 #include "Serializable.hh"
+#include <iostream>
 
 namespace dlib
 {
@@ -16,9 +18,49 @@ namespace dlib
 using namespace cv;
 
 
+void printRow( std::ostream& os, bool isX, const FullObjectDetection& obj )
+{
+	int c;
+	bool f;
+
+	if (isX)
+		os << "X = [ ";
+	else
+		os << "Y = [ ";
+
+	for (c = 0, f = false; c < obj.num_parts(); ++c)
+	{
+		//if (obj.num_parts() > 20)
+		{
+			//if ((c < 10) || (c > (obj.num_parts() - 10)))
+				if (isX)
+					os << round(obj.part(c).x) << " ";
+				else
+					os << round(obj.part(c).y) << " ";
+			/*else
+			{
+				if (!f)
+				{
+					std::cout << " ... ";
+					f = true;
+				}
+			}*/
+		}
+	}
+	os << "]" << std::endl;
+}
+
+
+std::ostream& operator<<(std::ostream& os, const FullObjectDetection& obj)
+{
+	printRow(os, true, obj);
+	printRow(os, false, obj);
+}
+
+
 cv::RNG& getRnd()
 {
-	static cv::RNG rnd;
+	static cv::RNG rnd( clock() );
 
 	return rnd;
 }
@@ -374,7 +416,7 @@ class ShapePredictor
 
             // convert the current_shape into a full_object_detection
             const point_transform_affine tform_to_img = unnormalizing_tform(rect);
-            std::vector<Point2f> parts(current_shape.cols/2);
+            std::vector<Point2f> parts(current_shape.cols);
             for (unsigned long i = 0; i < parts.size(); ++i)
                 parts[i] = tform_to_img(location(current_shape, i));
             return FullObjectDetection(rect, parts);
@@ -577,8 +619,8 @@ class ShapePredictorTrainer
         }
 
         ShapePredictor train (
-            const std::vector<Mat>& images,
-            const std::vector<std::vector<FullObjectDetection> >& objects
+            const std::vector<Mat*>& images,
+            const std::vector<std::vector<FullObjectDetection*> >& objects
         ) const
         {
             using namespace impl;
@@ -599,8 +641,8 @@ class ShapePredictorTrainer
                 {
                     if (num_parts == 0)
                     {
-                        num_parts = objects[i][j].num_parts();
-                        assert(objects[i][j].num_parts() != 0);
+                        num_parts = objects[i][j]->num_parts();
+                        assert(objects[i][j]->num_parts() != 0);
                         /*DLIB_CASSERT(objects[i][j].num_parts() != 0,
                             "\t shape_predictor shape_predictor_trainer::train()"
                             << "\n\t You can't give objects that don't have any parts to the trainer."
@@ -608,7 +650,7 @@ class ShapePredictorTrainer
                     }
                     else
                     {
-						assert(objects[i][j].num_parts() == num_parts);
+						assert(objects[i][j]->num_parts() == num_parts);
                         /*DLIB_CASSERT(objects[i][j].num_parts() == num_parts,
                             "\t shape_predictor shape_predictor_trainer::train()"
                             << "\n\t All the objects must agree on the number of parts. "
@@ -634,7 +676,7 @@ class ShapePredictorTrainer
             const std::vector<std::vector<Point2f > > pixel_coordinates = randomly_sample_pixel_coordinates(initial_shape);
 
             unsigned long trees_fit_so_far = 0;
-            //console_progress_indicator pbar(get_cascade_depth()*get_num_trees_per_cascade_level());
+            console_progress_indicator pbar(get_cascade_depth()*get_num_trees_per_cascade_level());
             if (_verbose)
                 std::cout << "Fitting trees..." << std::endl;
 
@@ -643,6 +685,7 @@ class ShapePredictorTrainer
             // Now start doing the actual training by filling in the forests
             for (unsigned long cascade = 0; cascade < get_cascade_depth(); ++cascade)
             {
+std::cout << "initial_shape = " << std::endl << initial_shape << std::endl << std::endl;
                 // Each cascade uses a different set of pixels for its features.  We compute
                 // their representations relative to the initial shape first.
                 std::vector<unsigned long> anchor_idx;
@@ -653,7 +696,7 @@ class ShapePredictorTrainer
                 // level of the cascade.
                 for (unsigned long i = 0; i < samples.size(); ++i)
                 {
-                    extract_feature_pixel_values(images[samples[i].image_idx], samples[i].rect,
+                    extract_feature_pixel_values(*images[samples[i].image_idx], samples[i].rect,
                         samples[i].current_shape, initial_shape, anchor_idx,
                         deltas, samples[i].feature_pixel_values);
                 }
@@ -666,7 +709,7 @@ class ShapePredictorTrainer
                     if (_verbose)
                     {
                         ++trees_fit_so_far;
-                        //pbar.print_status(trees_fit_so_far);
+                        pbar.print_status(trees_fit_so_far);
                     }
                 }
             }
@@ -685,7 +728,7 @@ class ShapePredictorTrainer
         {
 			// create an matrix of 2xN, where N is the amount of parts
             Mat shape(2, obj.num_parts(), CV_64F);
-
+std::cout << obj.get_rect() << std::endl;
             const point_transform_affine tform_from_img = impl::normalizing_tform(obj.get_rect());
 
             for (unsigned long i = 0; i < obj.num_parts(); ++i)
@@ -922,7 +965,7 @@ struct TrainingSample
 
 
         Mat populate_training_sample_shapes(
-            const std::vector<std::vector<FullObjectDetection> >& objects,
+            const std::vector<std::vector<FullObjectDetection*> >& objects,
             std::vector<TrainingSample>& samples
         ) const
         {
@@ -937,9 +980,9 @@ struct TrainingSample
                 {
                     TrainingSample sample;
                     sample.image_idx = i;
-                    sample.rect = objects[i][j].get_rect();
-                    sample.target_shape = object_to_shape(objects[i][j]);
-
+                    sample.rect = objects[i][j]->get_rect();
+                    sample.target_shape = object_to_shape(*objects[i][j]);
+std::cout << sample.target_shape << std::endl;
                     for (unsigned long itr = 0; itr < get_oversampling_amount(); ++itr)
                         samples.push_back(sample);
 
@@ -955,8 +998,6 @@ struct TrainingSample
 			// compute the mean shape
             mean_shape /= count;
 
-            RNG rnd;
-
             // now go pick random initial shapes
             for (unsigned long i = 0; i < samples.size(); ++i)
             {
@@ -970,9 +1011,9 @@ struct TrainingSample
                 {
                     // Pick a random convex combination of two of the target shapes and use
                     // that as the initial shape for this sample.
-                    const unsigned long rand_idx = rnd.uniform(0, 0x0FFFFFFF) % samples.size();
-                    const unsigned long rand_idx2 = rnd.uniform(0, 0x0FFFFFFF) % samples.size();
-                    const double alpha = rnd.uniform(0.0, 1.0);
+                    const unsigned long rand_idx = getRnd().uniform(0, 0x0FFFFFFF) % samples.size();
+                    const unsigned long rand_idx2 = getRnd().uniform(0, 0x0FFFFFFF) % samples.size();
+                    const double alpha = getRnd().uniform(0.0, 1.0);
                     samples[i].current_shape = alpha*samples[rand_idx].target_shape + (1-alpha)*samples[rand_idx2].target_shape;
                 }
             }
@@ -995,13 +1036,11 @@ struct TrainingSample
                     - pixel_coordinates[i] == a point in the box defined by the min/max x/y arguments.
         !*/
         {
-			RNG rnd;
-
             pixel_coordinates.resize(get_feature_pool_size());
             for (unsigned long i = 0; i < get_feature_pool_size(); ++i)
             {
-                pixel_coordinates[i].x = (max_x-min_x) + min_x;//rnd.uniform(0.0, 1.0)*(max_x-min_x) + min_x;
-                pixel_coordinates[i].y = (max_y-min_y) + min_y;//rnd.uniform(0.0, 1.0)*(max_y-min_y) + min_y;
+                pixel_coordinates[i].x = (max_x-min_x) + min_x;//getRnd().uniform(0.0, 1.0)*(max_x-min_x) + min_x;
+                pixel_coordinates[i].y = (max_y-min_y) + min_y;//getRnd().uniform(0.0, 1.0)*(max_y-min_y) + min_y;
             }
         }
 
@@ -1054,8 +1093,8 @@ struct TrainingSample
 
     double test_shape_predictor (
         const ShapePredictor& sp,
-        const std::vector<Mat>& images,
-        const std::vector<std::vector<FullObjectDetection> >& objects,
+        const std::vector<Mat*>& images,
+        const std::vector<std::vector<FullObjectDetection*> >& objects,
         const std::vector<std::vector<double> >& scales
     )
     {
@@ -1100,13 +1139,22 @@ struct TrainingSample
             {
                 // Just use a scale of 1 (i.e. no scale at all) if the caller didn't supply
                 // any scales.
-                const double scale = scales.size()==0 ? 1 : scales[i][j];
+                //const double scale = scales.size()==0 ? 1 : scales[i][j];
+                const double scale = 1;
 
-                FullObjectDetection det = sp.detect(images[i], objects[i][j].get_rect());
+                FullObjectDetection det = sp.detect(*images[i], objects[i][j]->get_rect());
+std::cout << *objects[i][j] << std::endl;
+std::cout << det << std::endl;
+
 
                 for (unsigned long k = 0; k < det.num_parts(); ++k)
                 {
-                    double score = dlib::impl::length(det.part(k) - objects[i][j].part(k))/scale;
+					Point2f gold, fit;
+					fit.x = round( det.part(k).x );
+					fit.y = round( det.part(k).y );
+					gold.x = round( objects[i][j]->part(k).x );
+					gold.y = round( objects[i][j]->part(k).y );
+                    double score = dlib::impl::length(fit - gold)/scale;
                     rs += score;
                     ++count;
                     //rs.add(score);
@@ -1124,8 +1172,8 @@ struct TrainingSample
         >
     double test_shape_predictor (
         const ShapePredictor& sp,
-        const std::vector<Mat>& images,
-        const std::vector<std::vector<FullObjectDetection> >& objects
+        const std::vector<Mat*>& images,
+        const std::vector<std::vector<FullObjectDetection*> >& objects
     )
     {
         std::vector<std::vector<double> > no_scales;
