@@ -60,7 +60,7 @@ std::ostream& operator<<(std::ostream& os, const FullObjectDetection& obj)
 
 cv::RNG& getRnd()
 {
-	static cv::RNG rnd( clock() );
+	static cv::RNG rnd( 0 );
 
 	return rnd;
 }
@@ -110,7 +110,7 @@ cv::RNG& getRnd()
             std::vector<Mat> leaf_values;
 
             inline const Mat& operator()(
-                const std::vector<float>& feature_pixel_values
+                const std::vector<double>& feature_pixel_values
             ) const
             /*!
                 requires
@@ -312,7 +312,7 @@ cv::RNG& getRnd()
             const Mat& reference_shape,
             const std::vector<unsigned long>& reference_pixel_anchor_idx,
             const std::vector<Point2f>& reference_pixel_deltas,
-            std::vector<float>& feature_pixel_values
+            std::vector<double>& feature_pixel_values
         )
         /*!
             requires
@@ -331,7 +331,7 @@ cv::RNG& getRnd()
                       current_shape rather than reference_shape.
         !*/
         {
-			//assert(img.type() == CV_32F);
+			assert(img.type() == CV_8UC1);
             const Mat tform = find_tform_between_shapes(reference_shape, current_shape).get_m();
             const point_transform_affine tform_to_img = unnormalizing_tform(rect);
 
@@ -343,9 +343,9 @@ cv::RNG& getRnd()
             {
                 // Compute the Point in the current shape corresponding to the i-th pixel and
                 // then map it from the normalized shape space into pixel space.
-                Point p = tform_to_img(tform*reference_pixel_deltas[i] + location(current_shape, reference_pixel_anchor_idx[i]));
+                Point2f p = tform_to_img(tform*reference_pixel_deltas[i] + location(current_shape, reference_pixel_anchor_idx[i]));
                 if (area.contains(p))
-                    feature_pixel_values[i] = img.at<float>(p.y, p.x);
+                    feature_pixel_values[i] = (double) img.at<uint8_t>(p.y, p.x);
                 else
                     feature_pixel_values[i] = 0;
             }
@@ -404,11 +404,16 @@ class ShapePredictor
         ) const
         {
             using namespace impl;
-            Mat current_shape = initial_shape;
-            std::vector<float> feature_pixel_values;
+            Mat current_shape;
+            initial_shape.copyTo(current_shape);
+std::cout << "detect initial shape \n" << initial_shape << std::endl;
+            std::vector<double> feature_pixel_values;
             for (unsigned long iter = 0; iter < forests.size(); ++iter)
             {
                 extract_feature_pixel_values(img, rect, current_shape, initial_shape, anchor_idx[iter], deltas[iter], feature_pixel_values);
+
+				/*for (int i = 0; i < feature_pixel_values.size(); ++i)
+					std::cout << feature_pixel_values[i] << std::endl;*/
                 // evaluate all the trees at this level of the cascade.
                 for (unsigned long i = 0; i < forests[iter].size(); ++i)
                     current_shape += forests[iter][i](feature_pixel_values);
@@ -685,7 +690,7 @@ class ShapePredictorTrainer
             // Now start doing the actual training by filling in the forests
             for (unsigned long cascade = 0; cascade < get_cascade_depth(); ++cascade)
             {
-std::cout << "initial_shape = " << std::endl << initial_shape << std::endl << std::endl;
+//std::cout << "initial_shape = " << std::endl << initial_shape << std::endl << std::endl;
                 // Each cascade uses a different set of pixels for its features.  We compute
                 // their representations relative to the initial shape first.
                 std::vector<unsigned long> anchor_idx;
@@ -765,7 +770,7 @@ struct TrainingSample
 	Mat target_shape;
 
 	Mat current_shape;
-	std::vector<float> feature_pixel_values;
+	std::vector<double> feature_pixel_values;
 
 	void swap(TrainingSample& item)
 	{
@@ -1145,7 +1150,6 @@ std::cout << sample.target_shape << std::endl;
                 FullObjectDetection det = sp.detect(*images[i], objects[i][j]->get_rect());
 std::cout << *objects[i][j] << std::endl;
 std::cout << det << std::endl;
-
 
                 for (unsigned long k = 0; k < det.num_parts(); ++k)
                 {

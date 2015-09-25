@@ -169,6 +169,7 @@ int main(int argc, char** argv)
         // distances.  Here we are causing the output to scale each face's
         // distances by the interocular distance, as is customary when
         // evaluating face landmarking systems.
+        for (int i = 0; i < 3; ++i)
         cout << "mean training error: "<<
             test_shape_predictor(sp, images_train, annots_train, get_interocular_distances(annots_train)) << endl;
 
@@ -177,8 +178,8 @@ int main(int argc, char** argv)
         // extremely high, but it's still doing quite good.  Moreover, if you
         // train it on one of the large face landmarking datasets you will
         // obtain state-of-the-art results, as shown in the Kazemi paper.
-        cout << "mean testing error:  "<<
-            test_shape_predictor(sp, images_train, annots_train, get_interocular_distances(annots_train)) << endl;
+        //cout << "mean testing error:  "<<
+        //    test_shape_predictor(sp, images_train, annots_train, get_interocular_distances(annots_train)) << endl;
 
 
 		/*char key;
