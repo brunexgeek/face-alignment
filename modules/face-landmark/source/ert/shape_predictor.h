@@ -16,6 +16,14 @@ namespace dlib
 using namespace cv;
 
 
+cv::RNG& getRnd()
+{
+	static cv::RNG rnd;
+
+	return rnd;
+}
+
+
 // ----------------------------------------------------------------------------------------
 
     namespace impl
@@ -123,7 +131,8 @@ using namespace cv;
 
 	double length( const Point2f &p )
 	{
-		return (double)p.x + (double)p.y;
+		return std::sqrt( (p.x * p.x) + (p.y * p.y) );
+		//return (double)p.x + (double)p.y;
 	}
 
 
@@ -303,6 +312,8 @@ using namespace cv;
     } // end namespace impl
 
 // ----------------------------------------------------------------------------------------
+
+
 
 class ShapePredictor
 {
@@ -755,6 +766,7 @@ struct TrainingSample
                     range.second, pixel_coordinates, sums[i], sums[left_child(i)],
                     sums[right_child(i)]);
                 tree.splits.push_back(split);
+//std::cout << "Split #" << i << " = " << split.thresh << std::endl;
                 const unsigned long mid = partition_samples(split, samples, range.first, range.second);
 
                 parts.push_back(std::make_pair(range.first, mid));
@@ -789,17 +801,16 @@ struct TrainingSample
             const double lambda = get_lambda();
             impl::SplitFeature feat;
             double accept_prob;
-            cv::RNG rnd;
             do
             {
-                feat.idx1   = rnd.uniform(0, 0x0FFFFFFF)%get_feature_pool_size();
-                feat.idx2   = rnd.uniform(0, 0x0FFFFFFF)%get_feature_pool_size();
+                feat.idx1   = getRnd().uniform(0, 0x0FFFFFFF)%get_feature_pool_size();
+                feat.idx2   = getRnd().uniform(0, 0x0FFFFFFF)%get_feature_pool_size();
                 const double dist = dlib::impl::length(pixel_coordinates[feat.idx1]-pixel_coordinates[feat.idx2]);
                 accept_prob = std::exp(-dist/lambda);
             }
-            while(feat.idx1 == feat.idx2 || !(accept_prob > rnd.uniform(0.0, 1.0)));
+            while(feat.idx1 == feat.idx2 || !(accept_prob > getRnd().uniform(0.0, 1.0)));
 
-            feat.thresh = (rnd.uniform(0.0, 1.0)*256 - 128)/2.0;
+            feat.thresh = (getRnd().uniform(0.0, 1.0)*256 /*- 128*/)/2.0;
 
             return feat;
         }
@@ -1021,7 +1032,7 @@ struct TrainingSample
 
 
 
-        cv::RNG rnd();
+
 
         unsigned long _cascade_depth;
         unsigned long _tree_depth;

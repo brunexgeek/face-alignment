@@ -92,15 +92,18 @@ int main(int argc, char** argv)
         // the locations and poses of each face in the training images.  So for
         // example, the image images_train[0] has the faces given by the
         // full_object_detections in faces_train[0].
-        Mat image_train, image_test;
+        Mat image_train, image_test, image;
         std::vector<FullObjectDetection> face_train, face_test;
 
-        image_train = imread("/media/dados/mestrado/300w-helen/trainset/100032540_1.jpg");
+        image = imread("/media/dados/mestrado/300w-helen/trainset/100032540_1.jpg");
+        cv::cvtColor(image, image_train, CV_RGB2GRAY);
         image_test = imread("/media/dados/mestrado/300w-helen/trainset/100032540_1.jpg");
-        cv::cvtColor(image_train, image_train, CV_BGR2GRAY);
-        cv::cvtColor(image_test, image_test, CV_BGR2GRAY);
-        image_train -= 128;
-        image_test -= 128;
+        cv::cvtColor(image, image_test, CV_RGB2GRAY);
+
+        cv::imshow("Image", image_train);
+
+        //image_train -= 128;
+        //image_test -= 128;
 		face_train.push_back( FullObjectDetection("/media/dados/mestrado/300w-helen/trainset/100032540_1.pts") );
 		face_test.push_back( FullObjectDetection("/media/dados/mestrado/300w-helen/trainset/100032540_1.pts") );
 
@@ -173,6 +176,10 @@ int main(int argc, char** argv)
         // obtain state-of-the-art results, as shown in the Kazemi paper.
         cout << "mean testing error:  "<<
             test_shape_predictor(sp, images_test, faces_test, get_interocular_distances(faces_test)) << endl;
+
+
+		char key;
+		do { key = cv::waitKey(0); } while (key != 0x27);
 
         // Finally, we save the model to disk so we can use it later.
         //serialize("sp.dat") << sp;
