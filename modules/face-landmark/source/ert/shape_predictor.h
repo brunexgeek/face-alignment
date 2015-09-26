@@ -272,16 +272,19 @@ double get_random_double (
 	)
 	{
 		float best_dist = std::numeric_limits<float>::infinity();
-		const unsigned long num_shape_parts = shape.cols / 2;
+		const unsigned long num_shape_parts = shape.cols;
 		unsigned long best_idx = 0;
 		for (unsigned long j = 0; j < num_shape_parts; ++j)
 		{
 			const float dist = length_squared(location(shape,j)-pt);
+//std::cout << "dist from " << location(shape,j) << " to " << pt << " = " << dist;
 			if (dist < best_dist)
 			{
 				best_dist = dist;
 				best_idx = j;
+//std::cout << "*";
 			}
+//std::cout << std::endl;
 		}
 		return best_idx;
 	}
@@ -432,10 +435,13 @@ double get_random_double (
                 // Compute the Point in the current shape corresponding to the i-th pixel and
                 // then map it from the normalized shape space into pixel space.
                 Point2f p = tform_to_img(tform*reference_pixel_deltas[i] + location(current_shape, reference_pixel_anchor_idx[i]));
+                p.x = round(p.x);
+                p.y = round(p.y);
                 if (area.contains(p))
                     feature_pixel_values[i] = (double) img.at<uint8_t>(p.y, p.x);
                 else
                     feature_pixel_values[i] = 0;
+//std::cout << "feature of " << p << " is " << feature_pixel_values[i] << std::endl;
             }
         }
 
@@ -762,15 +768,16 @@ class ShapePredictorTrainer
                 << "\n\t You must give at least one full_object_detection if you want to train a shape model and it must have parts."
             );*/
 
-            rnd.set_seed(get_random_seed());
+            //rnd.set_seed(get_random_seed());
+            rnd.set_seed("HELLO");
 
             std::vector<TrainingSample> samples;
 
             // compute the initial shape guests for each training sample
             const Mat initial_shape = populate_training_sample_shapes(objects, samples);
 
-
             const std::vector<std::vector<Point2f > > pixel_coordinates = randomly_sample_pixel_coordinates(initial_shape);
+
 
             unsigned long trees_fit_so_far = 0;
             console_progress_indicator pbar(get_cascade_depth()*get_num_trees_per_cascade_level());
@@ -782,12 +789,19 @@ class ShapePredictorTrainer
             // Now start doing the actual training by filling in the forests
             for (unsigned long cascade = 0; cascade < get_cascade_depth(); ++cascade)
             {
-// !! std::cout << "initial_shape = " << std::endl << initial_shape << std::endl << std::endl;
+//std::cout << "initial_shape = " << std::endl << initial_shape << std::endl << std::endl;
                 // Each cascade uses a different set of pixels for its features.  We compute
                 // their representations relative to the initial shape first.
                 std::vector<unsigned long> anchor_idx;
                 std::vector<Point2f > deltas;
                 create_shape_relative_encoding(initial_shape, pixel_coordinates[cascade], anchor_idx, deltas);
+
+
+/*for (int i = 0; i < anchor_idx.size(); ++i)
+	std::cout << "anchor_idx[" << i << "] = " << anchor_idx[i] << std::endl;
+
+std::getchar();*/
+
 
                 // First compute the feature_pixel_values for each training sample at this
                 // level of the cascade.
@@ -990,7 +1004,7 @@ struct TrainingSample
                     if (samples[j].feature_pixel_values[feats[i].idx1] - samples[j].feature_pixel_values[feats[i].idx2] > feats[i].thresh)
                     {
 						if (left_sums[i].rows == 0)
-							left_sums[i] = temp;
+							temp.copyTo(left_sums[i]);
 						else
 							left_sums[i] += temp;
                         ++left_cnt[i];
@@ -1026,7 +1040,8 @@ struct TrainingSample
             }
             else
             {
-                right_sum = sum;
+                //right_sum = sum;
+                sum.copyTo(right_sum);
                 left_sum = cv::Mat::zeros(sum.rows, sum.cols, sum.type());
             }
             return feats[best_feat];
@@ -1098,7 +1113,7 @@ struct TrainingSample
             // now go pick random initial shapes
             for (unsigned long i = 0; i < samples.size(); ++i)
             {
-                if ((i%get_oversampling_amount()) == 0)
+                if (false || (i%get_oversampling_amount()) == 0)
                 {
                     // The mean shape is what we really use as an initial shape so always
                     // include it in the training set as an example starting shape.
@@ -1142,8 +1157,10 @@ struct TrainingSample
             pixel_coordinates.resize(get_feature_pool_size());
             for (unsigned long i = 0; i < get_feature_pool_size(); ++i)
             {
-                pixel_coordinates[i].x = /*rnd.get_random_double()*/0.7*(max_x-min_x) + min_x;
-                pixel_coordinates[i].y = /*rnd.get_random_double()*/0.5*(max_y-min_y) + min_y;
+                pixel_coordinates[i].x = rnd.get_random_double()*(max_x-min_x) + min_x;
+                pixel_coordinates[i].y = rnd.get_random_double()*(max_y-min_y) + min_y;
+//std::cout << "pixel_coordinates[" << i << "] = " << pixel_coordinates[i] << std::endl;
+//std::getchar();
             }
         }
 
@@ -1164,6 +1181,9 @@ struct TrainingSample
 			cv::minMaxLoc( initial_shape( Range(1, 2), Range::all() ), &min_y, &max_y );
 			min_y += padding;
 			max_y += padding;
+
+//std::cout << "randomly_sample_pixel_coordinates: " << min_x << "  " << min_y << "  " << max_y << "  " << max_y << std::endl;
+//std::getchar();
 
             std::vector<std::vector<Point2f > > pixel_coordinates;
             pixel_coordinates.resize(get_cascade_depth());
@@ -1246,17 +1266,17 @@ struct TrainingSample
                 //const double scale = 1;
 
                 FullObjectDetection det = sp.detect(*images[i], objects[i][j]->get_rect());
-std::cout << *objects[i][j] << std::endl;
+/*std::cout << *objects[i][j] << std::endl;
 std::cout << det << std::endl;
 
-				Mat output;
-				cv::cvtColor(*images[i], output, CV_GRAY2BGR);
-				plotFace(output, *objects[i][j], Scalar(255,0,0), 2);
-				plotFace(output, det, Scalar(0,0,255));
-				cv::imshow("Fit", output);
+Mat output;
+cv::cvtColor(*images[i], output, CV_GRAY2BGR);
+plotFace(output, *objects[i][j], Scalar(255,0,0), 2);
+plotFace(output, det, Scalar(0,0,255));
+cv::imshow("Fit", output);
 
-				char key = 0;
-				do { key = cv::waitKey(0); } while (key != 'q');
+char key = 0;
+do { key = cv::waitKey(0); } while (key != 'q');*/
 
                 for (unsigned long k = 0; k < det.num_parts(); ++k)
                 {
