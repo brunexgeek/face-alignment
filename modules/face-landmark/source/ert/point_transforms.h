@@ -32,6 +32,8 @@ namespace dlib
 		return Point2f( p1.x + p2.x, p1.y + p2.y );
 	}
 
+
+	// CHECKED!!!
     class point_transform_affine
     {
     public:
@@ -50,6 +52,7 @@ namespace dlib
         ) :m(m_), b(b_)
         {
         }
+
 
         point_transform_affine (
             const Mat& m_,
@@ -96,7 +99,7 @@ namespace dlib
 
 
 
-
+	// CHECKED
     inline point_transform_affine operator* (
         const point_transform_affine& lhs,
         const point_transform_affine& rhs
@@ -107,7 +110,7 @@ namespace dlib
     }
 
 
-    //template <typename T>
+    // CHECKED!!!
     point_transform_affine find_affine_transform (
         const std::vector<Point2f>& from_points,
         const std::vector<Point2f>& to_points
@@ -137,13 +140,17 @@ namespace dlib
             Q.at<double>(1,i) = to_points[i].y;
         }
 
-//std::cout << "P = " << P << std::endl;
-//std::cout << "Q = " << Q << std::endl;
+/*P.at<double>(0,0) = P.at<double>(0,0) + 1;
+P.at<double>(1,0) += 1;
+P.at<double>(1,1) += 1;*/
+
+// !! std::cout << "P = " << P << std::endl;
+// !! std::cout << "Q = " << Q << std::endl;
 
 //std::cout << "P.inv() = " << P.inv(DECOMP_SVD) << std::endl;
 
         Mat m = Q * P.inv(DECOMP_SVD);
-//std::cout << "m = " << m << std::endl;
+// !! std::cout << "m = " << m << std::endl;
         //return point_transform_affine(subm(m,0,0,2,2), colm(m,2));
         return point_transform_affine(
 			m( Range(0, 2), Range(0, 2) ),
@@ -192,6 +199,7 @@ namespace dlib
 		// compute the mean (eq. 34 and 35)
         for (unsigned long i = 0; i < from_points.size(); ++i)
         {
+//std::cout << "From (" << from_points[i].x << "," << from_points[i].y << ") to (" << to_points[i].x << ", " << to_points[i].y << ")" << std::endl;
             mean_from += from_points[i];
             mean_to += to_points[i];
         }
@@ -217,25 +225,38 @@ std::cout << "cov = " << cov << std::endl;*/
 		Mat u, v, s, d;
 
 		cv::SVD svd;
-		svd.compute(cov, d, u, v);
+		svd.compute(cov, d, u, v, cv::SVD::FULL_UV);
 		d.convertTo(d, CV_64F);
 		u.convertTo(u, CV_64F);
 		v.convertTo(v, CV_64F);
 		//u = u.t();
 		//v = v.t();
-		// adjust the matrix 'd' to be used above
+
+		// adjust the matrix 'd' to be used below
 		cv::Mat temp = cv::Mat::zeros(2, 2, CV_64F);
-		temp.at<double>(1,1) = d.at<double>(0,1);
 		temp.at<double>(0,0) = d.at<double>(0,0);
+		temp.at<double>(1,1) = d.at<double>(0,1);
 		d = temp;
 
-		u( cv::Range::all(), cv::Range(1,2) ) *= -1;
-		v( cv::Range(1,2), cv::Range::all() ) *= -1;
+		// adjust the matrix 'u' to be used below
+		Mat _u = cv::Mat::zeros(u.rows, u.cols, u.type());
+		u.row(1).copyTo( _u.row(0) );
+		u.row(0).copyTo( _u.row(1) );
+		_u.row(1) *= -1;
+		u = _u;
+
+		// adjust the matrix 'v' to be used below
+		Mat _v = cv::Mat::zeros(v.rows, v.cols, v.type());
+		v.row(1).copyTo( _v.row(0) );
+		v.row(0).copyTo( _v.row(1) );
+		_v.col(0) *= -1;
+		v = _v;
 
         //svd(cov, u,d,v);
 /*std::cout << "u = " << u << std::endl;
 std::cout << "d = " << d << std::endl;
-std::cout << "v = " << v << std::endl << std::endl;*/
+std::cout << "v = " << v << std::endl << std::endl;
+std::getchar();*/
         //s = identity_matrix(cov);
         s = cv::Mat::eye( cov.size(), CV_64F );
 

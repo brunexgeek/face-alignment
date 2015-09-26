@@ -86,18 +86,29 @@ void main_loadData(
 int main(int argc, char** argv)
 {
 	/*cv::Mat cov = cv::Mat(2, 2, CV_64F);
-	cov.at<double>(0,0) = 0.0698383;
-	cov.at<double>(0,1) = -0.000258284;
-	cov.at<double>(1,0) = -0.000258284;
-	cov.at<double>(1,1) = 0.0854685;
+	cov.at<double>(0,0) = 0.0411864;
+	cov.at<double>(0,1) = -0.00438393;
+	cov.at<double>(1,0) = 0.00140244;
+	cov.at<double>(1,1) = 0.0521182;
 
 	cv::Mat d, u, v;
 	cv::SVD svd;
-	svd.compute(cov.t(), d, u, v);
+	svd.compute(cov, d, u, v, cv::SVD::FULL_UV);
+
+	Mat _u = cv::Mat::zeros(u.rows, u.cols, u.type());
+	u.row(1).copyTo( _u.row(0) );
+	u.row(0).copyTo( _u.row(1) );
+	_u.row(1) *= -1;
+
+	Mat _v = cv::Mat::zeros(v.rows, v.cols, v.type());
+	v.row(1).copyTo( _v.row(0) );
+	v.row(0).copyTo( _v.row(1) );
+	_v.col(0) *= -1;
+
 	std::cout << "cov = " << cov << std::endl;
-	std::cout << "u = " << u << std::endl;
+	std::cout << "u = " << _u << std::endl;
 	std::cout << "d = " << d << std::endl;
-	std::cout << "v = " << v << std::endl << std::endl;
+	std::cout << "v = " << _v << std::endl << std::endl;
 
 	return 0;*/
 
@@ -119,8 +130,8 @@ int main(int argc, char** argv)
         }
         const std::string script = argv[1];
 
-		std::vector<Mat*> images_train, &images_test = images_train;
-		std::vector<std::vector<FullObjectDetection*> > annots_train, &annots_test = annots_train;
+		std::vector<Mat*> images_train, images_test;
+		std::vector<std::vector<FullObjectDetection*> > annots_train, annots_test;
 		main_loadData(script, images_train, annots_train);
 
         // Now we load the data.  These XML files list the images in each
@@ -169,7 +180,6 @@ int main(int argc, char** argv)
         // distances.  Here we are causing the output to scale each face's
         // distances by the interocular distance, as is customary when
         // evaluating face landmarking systems.
-        for (int i = 0; i < 3; ++i)
         cout << "mean training error: "<<
             test_shape_predictor(sp, images_train, annots_train, get_interocular_distances(annots_train)) << endl;
 

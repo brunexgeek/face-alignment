@@ -11,11 +11,54 @@
 #include "serialize.h"
 #include "Serializable.hh"
 #include <iostream>
+#include "rand/rand_kernel_1.h"
 
 namespace dlib
 {
 
 using namespace cv;
+
+
+void plotFace(
+	Mat &image,
+	FullObjectDetection &det,
+	const Scalar &color,
+	int thickness = 1 )
+{
+	{
+		// contorno da face
+		for (size_t i = 0; i < 16; ++i)
+			cv::line(image, det.part(i), det.part(i+1), color, thickness);
+		// sobrancelha esquerda
+		for (size_t i = 17; i < 21; ++i)
+			cv::line(image, det.part(i), det.part(i+1), color, thickness);
+		// sonbrancelha direita
+		for (size_t i = 22; i < 26; ++i)
+			cv::line(image, det.part(i), det.part(i+1), color, thickness);
+		// linha vertical do nariz
+		for (size_t i = 27; i < 30; ++i)
+			cv::line(image, det.part(i), det.part(i+1), color, thickness);
+		// linha horizontal do nariz
+		for (size_t i = 31; i < 35; ++i)
+			cv::line(image, det.part(i), det.part(i+1), color, thickness);
+		// olho esquerdo
+		for (size_t i = 36; i < 41; ++i)
+			cv::line(image, det.part(i), det.part(i+1), color, thickness);
+		cv::line(image, det.part(41), det.part(36), color, thickness);
+		// olho direito
+		for (size_t i = 42; i < 47; ++i)
+			cv::line(image, det.part(i), det.part(i+1), color, thickness);
+		cv::line(image, det.part(47), det.part(42), color, thickness);
+		// parte externa da boca
+		for (size_t i = 48; i < 59; ++i)
+			cv::line(image, det.part(i), det.part(i+1), color, thickness);
+		cv::line(image, det.part(59), det.part(48), color, thickness);
+		// parte externa da boca
+		for (size_t i = 60; i < 67; ++i)
+			cv::line(image, det.part(i), det.part(i+1), color, thickness);
+		cv::line(image, det.part(67), det.part(60), color, thickness);
+	}
+}
 
 
 void printRow( std::ostream& os, bool isX, const FullObjectDetection& obj )
@@ -28,7 +71,7 @@ void printRow( std::ostream& os, bool isX, const FullObjectDetection& obj )
 	else
 		os << "Y = [ ";
 
-	for (c = 0, f = false; c < obj.num_parts(); ++c)
+	for (c = 0, f = false; c < (int)obj.num_parts(); ++c)
 	{
 		//if (obj.num_parts() > 20)
 		{
@@ -55,15 +98,57 @@ std::ostream& operator<<(std::ostream& os, const FullObjectDetection& obj)
 {
 	printRow(os, true, obj);
 	printRow(os, false, obj);
+	return os;
 }
 
-
+/*
 cv::RNG& getRnd()
 {
-	static cv::RNG rnd( 0 );
+	static cv::RNG rnd( clock() );
 
 	return rnd;
 }
+
+
+double get_random_double (
+)
+{
+	uint32_t temp;
+
+	double max_val =  0xFFFFFF;
+	max_val *= 0x1000000;
+	max_val += 0xFFFFFF;
+	max_val += 0.01;
+
+
+	temp = getRnd().uniform(0, 0x00FFFFFF);
+	temp &= 0xFFFFFF;
+
+	double val = static_cast<double>(temp);
+
+	val *= 0x1000000;
+
+	temp = getRnd().uniform(0, 0x00FFFFFF);
+	temp &= 0xFFFFFF;
+
+	val += temp;
+
+	val /= max_val;
+
+	if (val < 1.0)
+	{
+		return val;
+	}
+	else
+	{
+		// return a value slightly less than 1.0
+		return 1.0 - std::numeric_limits<double>::epsilon();
+	}
+}
+*/
+
+
+
 
 
 // ----------------------------------------------------------------------------------------
@@ -263,6 +348,7 @@ cv::RNG& getRnd()
 
     // ------------------------------------------------------------------------------------
 
+		// CHECKED!!!
         inline point_transform_affine normalizing_tform (
             const Rect& rect
         )
@@ -333,6 +419,8 @@ cv::RNG& getRnd()
         {
 			assert(img.type() == CV_8UC1);
             const Mat tform = find_tform_between_shapes(reference_shape, current_shape).get_m();
+//std::cout << "tform = \n" << tform << std::endl;
+//std::getchar();
             const point_transform_affine tform_to_img = unnormalizing_tform(rect);
 
             const Rect area = Rect(0, 0, img.cols, img.rows);
@@ -406,7 +494,7 @@ class ShapePredictor
             using namespace impl;
             Mat current_shape;
             initial_shape.copyTo(current_shape);
-std::cout << "detect initial shape \n" << initial_shape << std::endl;
+//std::cout << "detect initial shape \n" << initial_shape << std::endl;
             std::vector<double> feature_pixel_values;
             for (unsigned long iter = 0; iter < forests.size(); ++iter)
             {
@@ -541,6 +629,10 @@ class ShapePredictorTrainer
             _nu = nu;
         }
 
+
+		std::string get_random_seed (
+        ) const { return rnd.get_seed(); }
+
         unsigned long get_oversampling_amount (
         ) const { return _oversampling_amount; }
         void set_oversampling_amount (
@@ -670,7 +762,7 @@ class ShapePredictorTrainer
                 << "\n\t You must give at least one full_object_detection if you want to train a shape model and it must have parts."
             );*/
 
-            //rnd.set_seed(get_random_seed());
+            rnd.set_seed(get_random_seed());
 
             std::vector<TrainingSample> samples;
 
@@ -690,7 +782,7 @@ class ShapePredictorTrainer
             // Now start doing the actual training by filling in the forests
             for (unsigned long cascade = 0; cascade < get_cascade_depth(); ++cascade)
             {
-//std::cout << "initial_shape = " << std::endl << initial_shape << std::endl << std::endl;
+// !! std::cout << "initial_shape = " << std::endl << initial_shape << std::endl << std::endl;
                 // Each cascade uses a different set of pixels for its features.  We compute
                 // their representations relative to the initial shape first.
                 std::vector<unsigned long> anchor_idx;
@@ -727,26 +819,25 @@ class ShapePredictorTrainer
 
     private:
 
+		// CHECKED!!!
         static Mat object_to_shape (
             const FullObjectDetection& obj
         )
         {
 			// create an matrix of 2xN, where N is the amount of parts
             Mat shape(2, obj.num_parts(), CV_64F);
-std::cout << obj.get_rect() << std::endl;
+//std::cout << "ready for tform_from_img " << obj.get_rect() << std::endl;
             const point_transform_affine tform_from_img = impl::normalizing_tform(obj.get_rect());
+//std::cout << "tform_from_img = " << tform_from_img.get_b() << std::endl;
 
             for (unsigned long i = 0; i < obj.num_parts(); ++i)
             {
-				Point2f w = obj.part(i);
-				w.x = cvRound(w.x);
-				w.y = cvRound(w.y);
-
-                Point2f p = tform_from_img(/*obj.part(i)*/w);
+//std::cout << "original_point[" << i << "] = " << obj.part(i) << std::endl;
+                Point2f p = tform_from_img(obj.part(i));
+//std::cout << "target_point[" << i << "] = " << p << std::endl;
                 shape.at<double>(0, i) = p.x;
                 shape.at<double>(1, i) = p.y;
             }
-
             return shape;
         }
 
@@ -851,14 +942,15 @@ struct TrainingSample
             double accept_prob;
             do
             {
-                feat.idx1   = getRnd().uniform(0, 0x0FFFFFFF)%get_feature_pool_size();
-                feat.idx2   = getRnd().uniform(0, 0x0FFFFFFF)%get_feature_pool_size();
+                feat.idx1   = rnd.get_random_32bit_number() % get_feature_pool_size();
+                feat.idx2   = rnd.get_random_32bit_number() % get_feature_pool_size();
                 const double dist = dlib::impl::length(pixel_coordinates[feat.idx1]-pixel_coordinates[feat.idx2]);
                 accept_prob = std::exp(-dist/lambda);
             }
-            while(feat.idx1 == feat.idx2 || !(accept_prob > getRnd().uniform(0.0, 1.0)));
+            while(feat.idx1 == feat.idx2 || !(accept_prob > rnd.get_random_double()));
 
-            feat.thresh = (getRnd().uniform(0.0, 1.0)*256 /*- 128*/)/2.0;
+            //feat.thresh = (rnd.get_random_double()*256 - 128)/2.0;
+            feat.thresh = (rnd.get_random_double()*256 - 128)/2.0 + 128;
 
             return feat;
         }
@@ -987,13 +1079,13 @@ struct TrainingSample
                     sample.image_idx = i;
                     sample.rect = objects[i][j]->get_rect();
                     sample.target_shape = object_to_shape(*objects[i][j]);
-std::cout << sample.target_shape << std::endl;
+
                     for (unsigned long itr = 0; itr < get_oversampling_amount(); ++itr)
                         samples.push_back(sample);
 
                     // sum the current shape to the mean shape
                     if (mean_shape.rows == 0)
-						mean_shape = sample.target_shape;
+						sample.target_shape.copyTo(mean_shape);
 					else
 						mean_shape += sample.target_shape;
                     ++count;
@@ -1010,18 +1102,24 @@ std::cout << sample.target_shape << std::endl;
                 {
                     // The mean shape is what we really use as an initial shape so always
                     // include it in the training set as an example starting shape.
-                    samples[i].current_shape = mean_shape;
+                    mean_shape.copyTo(samples[i].current_shape);
                 }
                 else
                 {
                     // Pick a random convex combination of two of the target shapes and use
                     // that as the initial shape for this sample.
-                    const unsigned long rand_idx = getRnd().uniform(0, 0x0FFFFFFF) % samples.size();
-                    const unsigned long rand_idx2 = getRnd().uniform(0, 0x0FFFFFFF) % samples.size();
-                    const double alpha = getRnd().uniform(0.0, 1.0);
+                    const unsigned long rand_idx = rnd.get_random_32bit_number() % samples.size();
+                    const unsigned long rand_idx2 = rnd.get_random_32bit_number() % samples.size();
+                    const double alpha = rnd.get_random_double();
                     samples[i].current_shape = alpha*samples[rand_idx].target_shape + (1-alpha)*samples[rand_idx2].target_shape;
+//std::cout << mean_shape << std::endl;
+//std::cout << samples[i].current_shape << std::endl;
+//std::getchar();
                 }
             }
+
+//std::cout << mean_shape << std::endl;
+//std::getchar();
 
             return mean_shape;
         }
@@ -1044,8 +1142,8 @@ std::cout << sample.target_shape << std::endl;
             pixel_coordinates.resize(get_feature_pool_size());
             for (unsigned long i = 0; i < get_feature_pool_size(); ++i)
             {
-                pixel_coordinates[i].x = (max_x-min_x) + min_x;//getRnd().uniform(0.0, 1.0)*(max_x-min_x) + min_x;
-                pixel_coordinates[i].y = (max_y-min_y) + min_y;//getRnd().uniform(0.0, 1.0)*(max_y-min_y) + min_y;
+                pixel_coordinates[i].x = /*rnd.get_random_double()*/0.7*(max_x-min_x) + min_x;
+                pixel_coordinates[i].y = /*rnd.get_random_double()*/0.5*(max_y-min_y) + min_y;
             }
         }
 
@@ -1076,7 +1174,7 @@ std::cout << sample.target_shape << std::endl;
 
 
 
-
+		mutable dlib::rand rnd;
 
         unsigned long _cascade_depth;
         unsigned long _tree_depth;
@@ -1144,12 +1242,21 @@ std::cout << sample.target_shape << std::endl;
             {
                 // Just use a scale of 1 (i.e. no scale at all) if the caller didn't supply
                 // any scales.
-                //const double scale = scales.size()==0 ? 1 : scales[i][j];
-                const double scale = 1;
+                const double scale = scales.size()==0 ? 1 : scales[i][j];
+                //const double scale = 1;
 
                 FullObjectDetection det = sp.detect(*images[i], objects[i][j]->get_rect());
 std::cout << *objects[i][j] << std::endl;
 std::cout << det << std::endl;
+
+				Mat output;
+				cv::cvtColor(*images[i], output, CV_GRAY2BGR);
+				plotFace(output, *objects[i][j], Scalar(255,0,0), 2);
+				plotFace(output, det, Scalar(0,0,255));
+				cv::imshow("Fit", output);
+
+				char key = 0;
+				do { key = cv::waitKey(0); } while (key != 'q');
 
                 for (unsigned long k = 0; k < det.num_parts(); ++k)
                 {
