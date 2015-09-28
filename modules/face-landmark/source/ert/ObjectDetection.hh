@@ -3,13 +3,13 @@
 #ifndef DLIB_FULL_OBJECT_DeTECTION_Hh_
 #define DLIB_FULL_OBJECT_DeTECTION_Hh_
 
-#include "full_object_detection_abstract.h"
+
 #include <vector>
 #include <opencv2/opencv.hpp>
 #include <cstdio>
 
-namespace dlib
-{
+
+namespace ert {
 
 
 using namespace cv;
@@ -21,27 +21,27 @@ using namespace cv;
 
 // ----------------------------------------------------------------------------------------
 
-    class FullObjectDetection
+    class ObjectDetection
     {
 		public:
 
-			FullObjectDetection( const Rect& rect_, const std::vector<Point2f>& parts_ )
+			ObjectDetection( const Rect& rect_, const std::vector<Point2f>& parts_ )
 			{
 				rect = rect_;
 				parts = parts_;
 			}
 
-			FullObjectDetection( const char *fileName )
+			ObjectDetection( const char *fileName )
 			{
 				loadPointsFile(fileName);
 				computeBoundingBox(0.1);
 			}
 
-			FullObjectDetection()
+			ObjectDetection()
 			{
 			}
 
-			explicit FullObjectDetection(
+			explicit ObjectDetection(
 				const Rect& rect_
 			) : rect(rect_)
 			{
@@ -63,31 +63,6 @@ using namespace cv;
 					<< "\n\t this:        " << this
 					);*/
 				return parts[idx];
-			}
-
-			friend void serialize (
-				const FullObjectDetection& item,
-				std::ostream& out
-			)
-			{
-				//int version = 1;
-				/*serialize(version, out);
-				serialize(item.rect, out);
-				serialize(item.parts, out);*/
-			}
-
-			friend void deserialize (
-				FullObjectDetection& item,
-				std::istream& in
-			)
-			{
-				//int version = 0;
-				/*deserialize(version, in);
-				if (version != 1)
-					throw serialization_error("Unexpected version encountered while deserializing dlib::full_object_detection.");
-
-				deserialize(item.rect, in);
-				deserialize(item.parts, in);*/
 			}
 
 
@@ -131,8 +106,8 @@ using namespace cv;
 				float x, y;
 				int lines = 0;
 				FILE *fp;
-				int p;
-				char s[32];
+				//int p;
+				//char s[32];
 
 				fp = fopen(fileName, "rt");
 				if (fp == NULL) return;
@@ -164,7 +139,7 @@ using namespace cv;
 // ----------------------------------------------------------------------------------------
 
     inline bool all_parts_in_rect (
-        const FullObjectDetection& obj
+        const ObjectDetection& obj
     )
     {
         for (unsigned long i = 0; i < obj.num_parts(); ++i)

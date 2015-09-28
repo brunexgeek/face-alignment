@@ -3,6 +3,7 @@
 
 
 #include <iostream>
+#include <stdint.h>
 
 
 namespace ert {
@@ -12,28 +13,23 @@ class Serializable
 {
 
 	public:
-		static void serialize( float value, std::ostream &out )
-		{
-			out.write((char*)(&value), sizeof(float));
-		}
+		static std::ostream &serialize( std::ostream &out, float value );
 
+		static std::ostream &serialize( std::ostream &out, double value );
 
-		static void serialize( double value, std::ostream &out )
-		{
-			out.write((char*)(&value), sizeof(double));
-		}
+		static std::ostream &serialize( std::ostream &out, uint32_t value );
 
+		static std::ostream &serialize( std::ostream &out, int32_t value );
 
-		static void serialize( uint32_t value, std::ostream &out )
-		{
-			out.write((char*)(&value), sizeof(uint32_t));
-		}
+		static std::ostream &serialize( std::ostream &out, uint16_t value );
 
+		static std::ostream &serialize( std::ostream &out, int16_t value );
 
-		static void serialize( int32_t value, std::ostream &out )
-		{
-			serialize(value, out);
-		}
+		static std::ostream &serialize( std::ostream &out, uint8_t value );
+
+		static std::ostream &serialize( std::ostream &out, int8_t value );
+
+		static std::ostream &serialize( std::ostream &out, bool value );
 
 	private:
 		virtual void serialize( std::ostream &out ) = 0;

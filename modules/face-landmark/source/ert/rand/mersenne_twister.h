@@ -97,7 +97,7 @@ namespace dlib
 
             result_type operator()();
 
-            friend void serialize(
+            /*friend void serialize(
                 const mersenne_twister& item,
                 std::ostream& out
             )
@@ -113,7 +113,7 @@ namespace dlib
             {
                 dlib::deserialize(item.x, in);
                 dlib::deserialize(item.i, in);
-            }
+            }*/
 
         private:
 

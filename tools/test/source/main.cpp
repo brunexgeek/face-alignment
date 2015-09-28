@@ -139,7 +139,7 @@ int main(int argc, char** argv)
         // landmark positions given an image and face bounding box.  Here we are just
         // loading the model from the shape_predictor_68_face_landmarks.dat file you gave
         // as a command line argument.
-        dlib::ShapePredictor sp;
+        ert::ShapePredictor sp;
         //deserialize("sp.dat") >> sp;
 
         // Loop over all the images provided on the command line.
@@ -182,7 +182,7 @@ int main(int argc, char** argv)
             // each face we detected.
             for (unsigned long j = 0; j < 1; ++j)
             {
-                dlib::FullObjectDetection shape = sp.detect(img, rect);
+                ert::FullObjectDetection shape = sp.detect(img, rect);
                 // You get the idea, you can get all the face part locations if
                 // you want them.  Here we just store them in shapes so we can
                 // put them on the screen.

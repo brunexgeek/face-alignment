@@ -18,19 +18,20 @@
 
 
 #include <opencv2/opencv.hpp>
-#include "../../../modules/face-landmark/source/ert/shape_predictor.h"
+//#include "../../../modules/face-landmark/source/ert/ShapePredictor.hh"
+#include "../../../modules/face-landmark/source/ert/ShapePredictorTrainer.hh"
 
 #include <iostream>
 #include <fstream>
 #include <cstring>
 
-using namespace dlib;
+using namespace ert;
 using namespace std;
 
 
 
 std::vector<std::vector<double> > get_interocular_distances (
-    const std::vector<std::vector<FullObjectDetection*> >& objects
+    const std::vector<std::vector<ObjectDetection*> >& objects
 );
 /*!
     ensures
@@ -44,7 +45,7 @@ std::vector<std::vector<double> > get_interocular_distances (
 void main_loadData(
 	const std::string &script,
 	std::vector<Mat*> &images,
-	std::vector<std::vector<FullObjectDetection*> > &annots  )
+	std::vector<std::vector<ObjectDetection*> > &annots  )
 {
 	char line[128];
 	int imageCount = 0;
@@ -75,8 +76,8 @@ void main_loadData(
 		}
 		else
 			return;
-		std::vector<FullObjectDetection*> annot;
-		annot.push_back( new FullObjectDetection(line) );
+		std::vector<ObjectDetection*> annot;
+		annot.push_back( new ObjectDetection(line) );
 		annots[i] = annot;
 	}
 }
@@ -131,7 +132,7 @@ int main(int argc, char** argv)
         const std::string script = argv[1];
 
 		std::vector<Mat*> images_train, images_test;
-		std::vector<std::vector<FullObjectDetection*> > annots_train, annots_test;
+		std::vector<std::vector<ObjectDetection*> > annots_train, annots_test;
 		main_loadData(script, images_train, annots_train);
 
         // Now we load the data.  These XML files list the images in each
@@ -208,7 +209,7 @@ int main(int argc, char** argv)
 // ----------------------------------------------------------------------------------------
 
 double interocular_distance (
-    const FullObjectDetection& det
+    const ObjectDetection& det
 )
 {
     Point2f l, r;
@@ -238,7 +239,7 @@ std::cout << cv::norm(l-r) << std::endl;
 }
 
 std::vector<std::vector<double> > get_interocular_distances (
-    const std::vector<std::vector<FullObjectDetection*> >& objects
+    const std::vector<std::vector<ert::ObjectDetection*> >& objects
 )
 {
     std::vector<std::vector<double> > temp(objects.size());

@@ -5,7 +5,9 @@ include_directories(
     "../../3rd-party/flandmark/libflandmark"
     ${OpenCV_INCLUDE_DIRS} )
 
-file(GLOB MODULE_LANDMARK_SRC "source/*.cpp")
+file(GLOB MODULE_LANDMARK_SRC
+	"source/*.cpp"
+	"source/ert/*.cpp")
 
 add_library(module_landmark STATIC ${MODULE_LANDMARK_SRC} )
 target_link_libraries(module_landmark flandmark_static ${OpenCV_LIBS})
