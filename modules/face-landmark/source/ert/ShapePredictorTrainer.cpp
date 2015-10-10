@@ -65,11 +65,10 @@ namespace ert{
 * coordinate to the nearest part in the shape.
 */
 void create_shape_relative_encoding (
-const Mat& shape,
-const std::vector<Point2f> &pixel_coordinates,
-std::vector<unsigned long>& anchor_idx,
-std::vector<Point2f>& deltas
-)
+	const Mat& shape,
+	const std::vector<Point2f> &pixel_coordinates,
+	std::vector<unsigned long>& anchor_idx,
+	std::vector<Point2f>& deltas )
 /*!
 requires
 	- shape.size()%2 == 0
@@ -81,15 +80,14 @@ ensures
 		- pixel_coordinates[i] == location(shape,#anchor_idx[i]) + #deltas[i]
 !*/
 {
-anchor_idx.resize(pixel_coordinates.size());
-deltas.resize(pixel_coordinates.size());
+	anchor_idx.resize(pixel_coordinates.size());
+	deltas.resize(pixel_coordinates.size());
 
-
-for (unsigned long i = 0; i < pixel_coordinates.size(); ++i)
-{
-	anchor_idx[i] = nearest_shape_point(shape, pixel_coordinates[i]);
-	deltas[i] = pixel_coordinates[i] - location(shape,anchor_idx[i]);
-}
+	for (unsigned long i = 0; i < pixel_coordinates.size(); ++i)
+	{
+		anchor_idx[i] = nearest_shape_point(shape, pixel_coordinates[i]);
+		deltas[i] = pixel_coordinates[i] - location(shape,anchor_idx[i]);
+	}
 }
 
 // ------------------------------------------------------------------------------------
@@ -207,7 +205,11 @@ void extract_feature_pixel_values (
 		p.x = round(p.x);
 		p.y = round(p.y);
 		if (area.contains(p))
+		{
 			feature_pixel_values[i] = (double) img.at<uint8_t>(p.y, p.x);
+//std::cout << "image(" << p.x << "," << p.y << ") = " << feature_pixel_values[i] << std::endl;
+//std::getchar();
+		}
 		else
 			feature_pixel_values[i] = 0;
 //std::cout << "feature of " << p << " is " << feature_pixel_values[i] << std::endl;
@@ -291,8 +293,8 @@ ShapePredictor ShapePredictorTrainer::train (
 		create_shape_relative_encoding(initial_shape, pixel_coordinates[cascade], anchor_idx, deltas);
 
 
-/*for (int i = 0; i < anchor_idx.size(); ++i)
-std::cout << "anchor_idx[" << i << "] = " << anchor_idx[i] << std::endl;
+/*for (int i = 0; i < pixel_coordinates[cascade].size(); ++i)
+std::cout << "pixel_coordinates[" << i << "] = " << pixel_coordinates[cascade][i] << std::endl;
 
 std::getchar();*/
 

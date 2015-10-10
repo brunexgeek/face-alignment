@@ -257,6 +257,17 @@ namespace ert {
 				return shape;
 			}
 
+
+			void printShape( const std::string& prefix, const cv::Mat& mat ) const
+			{
+				std::cout << prefix;
+				for (int i = 0; i < mat.cols; ++i)
+					for (int j = 0; j < mat.rows; ++j)
+						std::cout << mat.at<double>(j,i) << std::endl;
+				std::cout << std::endl;
+			}
+
+
 			RegressionTree make_regression_tree (
 				std::vector<TrainingSample>& samples,
 				const std::vector<cv::Point2f >& pixel_coordinates
@@ -277,8 +288,10 @@ namespace ert {
 				for (unsigned long i = 0; i < samples.size(); ++i)
 				{
 					sums[0] += samples[i].target_shape - samples[i].current_shape;
+//std::cout << "samples[" << i << "].current_shape";
+//printShape(" = ", samples[i].current_shape);
 				}
-
+//printShape("sums[0] = ", sums[0]);
 				for (unsigned long i = 0; i < num_split_nodes; ++i)
 				{
 					std::pair<unsigned long,unsigned long> range = parts.front();
@@ -288,7 +301,7 @@ namespace ert {
 						range.second, pixel_coordinates, sums[i], sums[left_child(i)],
 						sums[right_child(i)]);
 					tree.splits.push_back(split);
-	//std::cout << "Split #" << i << " = " << split.thresh << std::endl;
+//std::cout << "Split #" << i << " = " << split.thresh << " " << split.idx1 << " " << split.idx2  << std::endl;
 					const unsigned long mid = partition_samples(split, samples, range.first, range.second);
 
 					parts.push_back(std::make_pair(range.first, mid));
@@ -301,7 +314,12 @@ namespace ert {
 				for (unsigned long i = 0; i < parts.size(); ++i)
 				{
 					if (parts[i].second != parts[i].first)
+					{
+//std::cout << parts[i].second << " != " <<  parts[i].first << std::endl;
 						tree.leaf_values[i] = sums[num_split_nodes+i]*get_nu()/(parts[i].second - parts[i].first);
+/*std::cout << "tree.leaf_values[" << i << "]";
+printShape(" = ", tree.leaf_values[i]);*/
+					}
 					else
 						tree.leaf_values[i] = cv::Mat::zeros(samples[0].target_shape.rows, samples[0].target_shape.cols, CV_64F);//zeros_matrix(samples[0].target_shape);
 
@@ -309,7 +327,8 @@ namespace ert {
 					for (unsigned long j = parts[i].first; j < parts[i].second; ++j)
 						samples[j].current_shape += tree.leaf_values[i];
 				}
-
+//std::cout << "newer samples[" << 0 << "].current_shape = " << samples[0].current_shape << std::endl;
+//std::getchar();
 				return tree;
 			}
 
@@ -332,8 +351,8 @@ namespace ert {
 				}
 				while(feat.idx1 == feat.idx2 || !(accept_prob > rnd.get_random_double()));
 
-				//feat.thresh = (rnd.get_random_double()*256 - 128)/2.0;
-				feat.thresh = (rnd.get_random_double()*256 - 128)/2.0 + 128;
+				feat.thresh = (rnd.get_random_double()*256 - 128)/2.0;
+				//feat.thresh = (rnd.get_random_double()*256 - 128)/2.0 + 128;
 
 				return feat;
 			}
@@ -430,16 +449,18 @@ namespace ert {
 			) const
 			{
 				//
-
+//std::cout << "range = " << begin << " to " << end << std::endl;
 				unsigned long i = begin;
 				for (unsigned long j = begin; j < end; ++j)
 				{
+//std::cout << samples[j].feature_pixel_values[split.idx1] << " - " << samples[j].feature_pixel_values[split.idx2] << "> " << split.thresh << std::endl;
 					if (samples[j].feature_pixel_values[split.idx1] - samples[j].feature_pixel_values[split.idx2] > split.thresh)
 					{
 						samples[i].swap(samples[j]);
 						++i;
 					}
 				}
+
 				return i;
 			}
 
@@ -482,7 +503,7 @@ namespace ert {
 				// now go pick random initial shapes
 				for (unsigned long i = 0; i < samples.size(); ++i)
 				{
-					if (false || (i%get_oversampling_amount()) == 0)
+					if ((i%get_oversampling_amount()) == 0)
 					{
 						// The mean shape is what we really use as an initial shape so always
 						// include it in the training set as an example starting shape.

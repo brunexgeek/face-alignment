@@ -64,8 +64,31 @@ void main_loadData(
 		// load the image
 		list.getline(line, sizeof(line) - 5);
 		std::cout << "Loading " << line << std::endl;
+#if (0)
 		cv::Mat current;
 		cv::cvtColor(imread(line), current, CV_BGR2GRAY);
+#else
+		cv::Mat temp[3];
+		split(imread(line), temp);
+		temp[0].convertTo(temp[0], CV_32F);
+		temp[1].convertTo(temp[1], CV_32F);
+		temp[2].convertTo(temp[2], CV_32F);
+		cv::Mat current = temp[0] + temp[1] + temp[2];
+		current /= 3.0;
+		current.convertTo(current, CV_8U);
+		/*for (int r = 0; r < current.rows; ++r)
+			for (int c = 0; c < current.cols; ++c)
+				current.at<float>(r, c) = std::ceil( current.at<float>(r, c) );*/
+		//current.convertTo(current, CV_8U);
+//std::getchar();
+/*std::cout << temp[0]( cv::Range(0, 5), cv::Range(0, 5) ) << std::endl
+		  << temp[1]( cv::Range(0, 5), cv::Range(0, 5) ) << std::endl
+		  << temp[2]( cv::Range(0, 5), cv::Range(0, 5) ) << std::endl
+		  << current( cv::Range(0, 5), cv::Range(0, 5) ) << std::endl;
+*/
+/*cv::imshow("Test", temp[0]);
+cv::waitKey(0);*/
+#endif
 		images[i] = new cv::Mat(current);
 		// load the annotations
 		int pos = strrchr(line, '.') - line;
@@ -159,6 +182,8 @@ int main(int argc, char** argv)
         // to a high amount (300) effectively boosts the training set size, so
         // that helps this example.
         trainer.set_oversampling_amount(300);
+		trainer.set_cascade_depth(10);
+        trainer.set_num_trees_per_cascade_level(500);
         // I'm also reducing the capacity of the model by explicitly increasing
         // the regularization (making nu smaller) and by using trees with
         // smaller depths.

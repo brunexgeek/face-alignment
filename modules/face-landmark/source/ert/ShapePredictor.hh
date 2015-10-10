@@ -101,7 +101,7 @@ class ShapePredictor : public Serializable
         unsigned long num_parts (
         ) const
         {
-            return initial_shape.cols / 2;
+            return initial_shape.cols;
         }
 
 		void serialize( std::ostream &out ) const
