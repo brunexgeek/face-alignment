@@ -78,7 +78,7 @@ double get_random_double (
 
 
 
-class ShapePredictor
+class ShapePredictor : public Serializable
 {
 	public:
 
@@ -103,6 +103,98 @@ class ShapePredictor
         {
             return initial_shape.cols / 2;
         }
+
+		void serialize( std::ostream &out ) const
+		{
+			// serialize the initial shape
+			Serializable::serialize(out, initial_shape);
+			
+			// serialize the forests
+			Serializable::serialize(out, forests.size());
+			for (size_t i = 0; i < forests.size(); ++i)
+			{
+				const std::vector<RegressionTree> &current = forests[i];
+				
+				Serializable::serialize(out, current.size());
+				for (size_t j = 0; j < current.size(); ++j)
+					current[j].serialize(out);
+			}
+
+			// serialize the anchors
+			Serializable::serialize(out, anchor_idx.size());
+			for (size_t i = 0; i < anchor_idx.size(); ++i)
+			{
+				const std::vector<unsigned long> &current = anchor_idx[i];
+				
+				Serializable::serialize(out, current.size());
+				for (size_t j = 0; j < current.size(); ++j)
+					Serializable::serialize(out, current[j]);
+			}
+
+			// serialize the deltas
+			Serializable::serialize(out, deltas.size());
+			for (size_t i = 0; i < deltas.size(); ++i)
+			{
+				const std::vector<Point2f> &current = deltas[i];
+				
+				Serializable::serialize(out, current.size());
+				for (size_t j = 0; j < current.size(); ++j)
+					Serializable::serialize(out, current[j]);
+			}
+		}
+		
+		void deserialize( std::istream &in )
+		{
+			// deserialize the initial shape
+			Serializable::deserialize(in, initial_shape);
+			
+			// deserialize the forests
+			size_t entries;
+			Serializable::deserialize(in, entries);
+			forests.resize(entries);
+			for (size_t i = 0; i < entries; ++i)
+			{
+				size_t entries;
+				Serializable::deserialize(in, entries);
+				
+				std::vector<RegressionTree> &current = forests[i];
+				current.resize(entries);
+				
+				for (size_t j = 0; j < current.size(); ++j)
+					current[j].deserialize(in);
+			}
+
+			// deserialize the anchors
+			Serializable::deserialize(in, entries);
+			anchor_idx.resize(entries);
+			for (size_t i = 0; i < entries; ++i)
+			{
+				size_t entries;
+				Serializable::deserialize(in, entries);
+				
+				std::vector<unsigned long> &current = anchor_idx[i];
+				current.resize(entries);
+				
+				for (size_t j = 0; j < current.size(); ++j)
+					Serializable::deserialize(in, current[j]);
+			}
+
+			// serialize the deltas
+			Serializable::deserialize(in, entries);
+			deltas.resize(entries);
+			for (size_t i = 0; i < entries; ++i)
+			{
+				size_t entries;
+				Serializable::deserialize(in, entries);
+				
+				std::vector<Point2f> &current = deltas[i];
+				current.resize(entries);
+				
+				for (size_t j = 0; j < current.size(); ++j)
+					Serializable::deserialize(in, current[j]);
+			}
+			
+		}
 
     private:
         Mat initial_shape;

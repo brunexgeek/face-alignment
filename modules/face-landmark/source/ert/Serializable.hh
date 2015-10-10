@@ -2,6 +2,7 @@
 #define FA_SERIALIZABLE_H
 
 
+#include <opencv2/opencv.hpp>
 #include <iostream>
 #include <stdint.h>
 
@@ -30,9 +31,39 @@ class Serializable
 		static std::ostream &serialize( std::ostream &out, int8_t value );
 
 		static std::ostream &serialize( std::ostream &out, bool value );
+		
+		static std::ostream &serialize( std::ostream &out, uint64_t value );
+		
+		static std::ostream &serialize( std::ostream &out, const cv::Mat& value );
+		
+		static std::ostream &serialize( std::ostream &out, const cv::Point2f& value );
 
-	private:
-		virtual void serialize( std::ostream &out ) = 0;
+		static std::istream &deserialize( std::istream &in, float& value );
+
+		static std::istream &deserialize( std::istream &in, double& value );
+
+		static std::istream &deserialize( std::istream &in, uint32_t& value );
+
+		static std::istream &deserialize( std::istream &in, int32_t& value );
+
+		static std::istream &deserialize( std::istream &in, uint16_t& value );
+
+		static std::istream &deserialize( std::istream &in, int16_t& value );
+
+		static std::istream &deserialize( std::istream &in, uint8_t& value );
+
+		static std::istream &deserialize( std::istream &in, int8_t& value );
+
+		static std::istream &deserialize( std::istream &in, bool& value );
+		
+		static std::istream &deserialize( std::istream &in, uint64_t& value );
+		
+		static std::istream &deserialize( std::istream &in, cv::Mat& value );
+		
+		static std::istream &deserialize( std::istream &in, cv::Point2f& value );
+
+		virtual void serialize( std::ostream &out ) const = 0;
+		
 		virtual void deserialize( std::istream &in ) = 0;
 
 };

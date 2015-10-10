@@ -172,6 +172,15 @@ int main(int argc, char** argv)
 
         // Now finally generate the shape model
         ShapePredictor sp = trainer.train( images_train, annots_train);
+        
+        std::ofstream output("./model.dat");
+        sp.serialize(output);
+        output.close();
+
+		ShapePredictor model;
+		std::ifstream input("./model.dat");
+		model.deserialize(input);
+		input.close();
 
 
         // Now that we have a model we can test it.  This function measures the
@@ -182,7 +191,7 @@ int main(int argc, char** argv)
         // distances by the interocular distance, as is customary when
         // evaluating face landmarking systems.
         cout << "mean training error: "<<
-            test_shape_predictor(sp, images_train, annots_train, get_interocular_distances(annots_train)) << endl;
+            test_shape_predictor(model, images_train, annots_train, get_interocular_distances(annots_train)) << endl;
 
         // The real test is to see how well it does on data it wasn't trained
         // on.  We trained it on a very small dataset so the accuracy is not
