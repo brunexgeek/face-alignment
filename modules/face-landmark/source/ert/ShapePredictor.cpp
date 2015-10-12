@@ -188,12 +188,12 @@ do { key = cv::waitKey(0); } while (key != 'q');*/
                 for (unsigned long k = 0; k < det.num_parts(); ++k)
                 {
 					Point2f gold, fit;
-					fit.x = ceil( det.part(k).x );
-					fit.y = ceil( det.part(k).y );
+					fit.x = round( det.part(k).x );
+					fit.y = round( det.part(k).y );
 					gold.x = objects[i][j]->part(k).x;
 					gold.y = objects[i][j]->part(k).y;
-					if (fit.x != gold.x || fit.y != gold.y)
-std::cout << "Point[" << k << "] = (" << fit.x << ", " << fit.y << ")    Gold = (" << (int)gold.x << ", " << (int)gold.y << ")" << std::endl;
+					//if (fit.x != gold.x || fit.y != gold.y)
+std::cout << "Point[" << k << "] = (" << fit.x << ", " << fit.y << ")    Gold = (" << gold.x << ", " << gold.y << ")" << std::endl;
                     double score = mylength(fit - gold)/scale;
                     rs += score;
                     ++count;

@@ -503,7 +503,7 @@ printShape(" = ", tree.leaf_values[i]);*/
 				// now go pick random initial shapes
 				for (unsigned long i = 0; i < samples.size(); ++i)
 				{
-					if ((i%get_oversampling_amount()) == 0)
+					if (false || (i%get_oversampling_amount()) == 0)
 					{
 						// The mean shape is what we really use as an initial shape so always
 						// include it in the training set as an example starting shape.

@@ -93,7 +93,9 @@ using namespace cv;
 				bbox.width += (float(bbox.width) * (border * 2));
 				bbox.height += (float(bbox.height) * (border * 2));
 
-				printf("{ Pos: %d x %d    Size : %d x %d }\n", bbox.x, bbox.y, bbox.width, bbox.height);
+				printf("{ Pos: %d x %d    Size : %d x %d    End: %d x %d }\n", 
+					bbox.x, bbox.y, bbox.width, bbox.height, bbox.x + bbox.width,
+					bbox.y + bbox.height);
 
 				this->rect = bbox;
 			}
@@ -124,7 +126,7 @@ using namespace cv;
 
 					if ( sscanf(line, "%f %f", &x, &y) == 2)
 					{
-						parts.push_back( Point2f( std::ceil(x), std::ceil(y) ) );
+						parts.push_back( Point2f( std::floor(x), std::floor(y) ) );
 						lines++;
 					}
 				}

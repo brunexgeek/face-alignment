@@ -280,12 +280,15 @@ ShapePredictor ShapePredictorTrainer::train (
 	if (_verbose)
 		std::cout << "Fitting trees..." << std::endl;
 
+for (int i = 0; i < 68; ++i)
+std::cout << "part[" << i << "] = " << objects[0][0]->part(i) << std::endl;
+
 	std::vector<std::vector<RegressionTree> > forests(get_cascade_depth());
 
 	// Now start doing the actual training by filling in the forests
 	for (unsigned long cascade = 0; cascade < get_cascade_depth(); ++cascade)
 	{
-//std::cout << "initial_shape = " << std::endl << initial_shape << std::endl << std::endl;
+std::cout << "initial_shape = " << std::endl << initial_shape << std::endl << std::endl;
 		// Each cascade uses a different set of pixels for its features.  We compute
 		// their representations relative to the initial shape first.
 		std::vector<unsigned long> anchor_idx;
