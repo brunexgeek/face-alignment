@@ -75,14 +75,14 @@ void plotFace(
 void printRow( std::ostream& os, bool isX, const ObjectDetection& obj )
 {
 	int c;
-	bool f;
+
 
 	if (isX)
 		os << "X = [ ";
 	else
 		os << "Y = [ ";
 
-	for (c = 0, f = false; c < (int)obj.num_parts(); ++c)
+	for (c = 0; c < (int)obj.num_parts(); ++c)
 	{
 		//if (obj.num_parts() > 20)
 		{
@@ -169,8 +169,8 @@ std::ostream& operator<<(std::ostream& os, const ObjectDetection& obj)
             {
                 // Just use a scale of 1 (i.e. no scale at all) if the caller didn't supply
                 // any scales.
-                //const double scale = scales.size()==0 ? 1 : scales[i][j];
-                const double scale = 1;
+                const double scale = scales.size()==0 ? 1 : scales[i][j];
+                //const double scale = 1;
 
                 ObjectDetection det = sp.detect(*images[i], objects[i][j]->get_rect());
 /*std::cout << *objects[i][j] << std::endl;
@@ -190,10 +190,10 @@ do { key = cv::waitKey(0); } while (key != 'q');*/
 					Point2f gold, fit;
 					fit.x = round( det.part(k).x );
 					fit.y = round( det.part(k).y );
-					gold.x = objects[i][j]->part(k).x;
-					gold.y = objects[i][j]->part(k).y;
-					//if (fit.x != gold.x || fit.y != gold.y)
-std::cout << "Point[" << k << "] = (" << fit.x << ", " << fit.y << ")    Gold = (" << gold.x << ", " << gold.y << ")" << std::endl;
+					gold.x = round(objects[i][j]->part(k).x);
+					gold.y = round(objects[i][j]->part(k).y);
+//					if (fit.x != gold.x || fit.y != gold.y)
+//std::cout << "Point[" << k << "] = (" << fit.x << ", " << fit.y << ")    Gold = (" << gold.x << ", " << gold.y << ")" << std::endl;
                     double score = mylength(fit - gold)/scale;
                     rs += score;
                     ++count;
