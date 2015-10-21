@@ -276,19 +276,19 @@ ShapePredictor ShapePredictorTrainer::train (
 
 
 	unsigned long trees_fit_so_far = 0;
-	console_progress_indicator pbar(get_cascade_depth()*get_num_trees_per_cascade_level());
+	ProgressIndicator pbar(get_cascade_depth()*get_num_trees_per_cascade_level());
 	if (_verbose)
 		std::cout << "Fitting trees..." << std::endl;
 
-for (int i = 0; i < 68; ++i)
-std::cout << "part[" << i << "] = " << objects[0][0]->part(i) << std::endl;
+//for (int i = 0; i < 68; ++i)
+//std::cout << "part[" << i << "] = " << objects[0][0]->part(i) << std::endl;
 
 	std::vector<std::vector<RegressionTree> > forests(get_cascade_depth());
 
 	// Now start doing the actual training by filling in the forests
 	for (unsigned long cascade = 0; cascade < get_cascade_depth(); ++cascade)
 	{
-std::cout << "initial_shape = " << std::endl << initial_shape << std::endl << std::endl;
+//std::cout << "initial_shape = " << std::endl << initial_shape << std::endl << std::endl;
 		// Each cascade uses a different set of pixels for its features.  We compute
 		// their representations relative to the initial shape first.
 		std::vector<unsigned long> anchor_idx;
@@ -320,7 +320,7 @@ std::getchar();*/
 			if (_verbose)
 			{
 				++trees_fit_so_far;
-				pbar.print_status(trees_fit_so_far);
+				pbar.print(trees_fit_so_far);
 			}
 		}
 	}

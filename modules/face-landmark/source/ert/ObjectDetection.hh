@@ -7,6 +7,7 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 #include <cstdio>
+#include <fstream>
 
 
 namespace ert {
@@ -33,7 +34,7 @@ using namespace cv;
 
 			ObjectDetection( const char *fileName )
 			{
-				loadPointsFile(fileName);
+				loadPoints(fileName);
 				computeBoundingBox(0.1);
 			}
 
@@ -93,7 +94,7 @@ using namespace cv;
 				bbox.width += (float(bbox.width) * (border * 2));
 				bbox.height += (float(bbox.height) * (border * 2));
 
-				printf("{ Pos: %d x %d    Size : %d x %d    End: %d x %d }\n", 
+				printf("{ Pos: %d x %d    Size : %d x %d    End: %d x %d }\n",
 					bbox.x, bbox.y, bbox.width, bbox.height, bbox.x + bbox.width,
 					bbox.y + bbox.height);
 
@@ -101,7 +102,25 @@ using namespace cv;
 			}
 
 
-			void loadPointsFile( const char *fileName )
+			void save( const string& fileName ) const
+			{
+				std::ofstream out(fileName.c_str());
+
+				out << "version: 1" << std::endl;
+				out << "n_points: " << num_parts() << std::endl;
+				out << "{" << std::endl;
+
+				for (int i = 0; i < (int)num_parts(); ++i)
+				{
+					const Point2f &point = part(i);
+					out << floor(point.x) << " " << floor(point.y) << std::endl;
+				}
+
+				out << "}";
+				out.close();
+			}
+
+			void loadPoints( const char *fileName )
 			{
 				char *line;
 				size_t len = 0;
@@ -131,6 +150,13 @@ using namespace cv;
 					}
 				}
 				fclose(fp);
+			}
+
+			void load(
+				const std::string &fileName )
+			{
+				loadPoints(fileName.c_str());
+				computeBoundingBox(0.1);
 			}
 
 		private:

@@ -1,217 +1,119 @@
+
 #include <opencv2/opencv.hpp>
-#include "../../../modules/face-landmark/source/ert/shape_predictor.h"
+#include <face-detector/detector.hpp>
+#include "../../../modules/face-landmark/source/ert/ShapePredictorTrainer.hh"
+#include "../../../modules/face-landmark/source/ert/SampleList.hh"
+
 #include <iostream>
-#include <dirent.h>
-#include <stdint.h>
-#include <stdio.h>
+#include <fstream>
+#include <cstring>
+#include <getopt.h>
 
+
+#define FACE_CASCADE_FILE     "haarcascade_frontalface_alt.xml"
+
+
+using namespace ert;
 using namespace std;
-using namespace cv;
+using namespace vasr::detector;
 
 
-char imageFileName[256];
-char pointFileName[256];
-char outputFileName[256];
-char temp[64];
+string evaluateScriptFileName = "";
+
+string modelFileName = "";
 
 
-// ----------------------------------------------------------------------------------------
-
-
-uint8_t computeBoundingBox(
-	const char *fileName,
-	float *bbox,
-	float border )
+void main_usage()
 {
-	char *line;
-	size_t len = 0;
-	float x, y;
-	int lines = 0;
-	float minX = 100000, minY = 100000, maxX = -100, maxY = -100;
-	FILE *fp;
-
-	fp = fopen(fileName, "rt");
-	if (fp == NULL) return 0;
-
-	while(!feof(fp))
-	{
-		if ( getline(&line, &len, fp) < 0) continue;
-		if ( sscanf(line, "%f %f", &x, &y) == 2 )
-		{
-			if (minX > x) minX = x;
-			if (minY > y) minY = y;
-			if (maxX < x) maxX = x;
-			if (maxY < y) maxY = y;
-			lines++;
-		}
-	}
-	fclose(fp);
-
-	if (lines != 68) return 0;
-
-	bbox[0] = minY;
-	bbox[1] = minX;
-	bbox[2] = maxY - minY;
-	bbox[3] = maxX - minX;
-
-	bbox[0] -= (float(bbox[2]) * border);
-	bbox[1] -= (float(bbox[3]) * border);
-	bbox[2] += (float(bbox[2]) * (border * 2));
-	bbox[3] += (float(bbox[3]) * (border * 2));
-
-	return 1;
+    std::cerr << "Usage: tool_test -e <script file> -m <model file>" << std::endl;
+    exit(EXIT_FAILURE);
 }
 
-#if (0)
-void loadBoundingBoxes( const char *fileName, float*** values, int *count )
+
+void main_parseOptions( int argc, char **argv )
 {
-	int lines = 0;
-	size_t len = 0;
-	FILE *fp;
-	char *content;
-	char ch;
+    int opt;
 
-	fp = fopen(fileName, "rt");
-	if (fp == NULL) return NULL;
-
-	while(!feof(fp))
-	{
-		ch = fgetc(fp);
-		if(ch == '\n') lines++;
+    while ((opt = getopt(argc, argv, "e:m:")) != -1)
+    {
+        switch (opt)
+        {
+            case 'e':
+                evaluateScriptFileName = string(optarg);
+                break;
+            case 'm':
+				modelFileName = string(optarg);
+				break;
+            default: /* '?' */
+                main_usage();
+        }
+    }
+    if (evaluateScriptFileName.empty() || modelFileName.empty())
+    {
+		main_usage();
 	}
-	fseek(fp, 0, SEEK_SET);
-
-	float ** data = (float**) calloc(lines, sizeof(float*));
-
-	lines = 0;
-	while(!feof(fp))
-	{
-		if ( getline(&content, &len, fp) < 0) continue;
-		data[lines] = (float*) calloc(4, sizeof(float));
-		sscanf(content, "%f %f %f %f",
-			&data[lines][0],
-			&data[lines][1],
-			&data[lines][2],
-			&data[lines][3]);
-		printf("%f %f %f %f\n",
-			data[lines][0],
-			data[lines][1],
-			data[lines][2],
-			data[lines][3]);
-		lines++;
-	}
-
-	return data;
 }
-#endif
 
 
-Point2f operator*(cv::Mat M, const cv::Point2f& p)
+double main_length( const Point2f &p )
 {
-	cv::Mat src(3/*rows*/,1 /* cols */,CV_64F);
-
-	src.at<double>(0,0)=p.x;
-	src.at<double>(1,0)=p.y;
-	src.at<double>(2,0)=1.0;
-
-	cv::Mat dst = M*src; //USE MATRIX ALGEBRA
-	return cv::Point2f(dst.at<double>(0,0),dst.at<double>(1,0));
+	return std::sqrt( (p.x * p.x) + (p.y * p.y) );
 }
+
 
 
 int main(int argc, char** argv)
 {
-	struct dirent *entry;
-	DIR *dir;
-	int pos;
-	float data[4];
-	int i = 0;
+	main_parseOptions(argc, argv);
 
-	//loadBoundingBoxes(argv[3], &data, &files);
-	//return 0;
+	try
+	{
+		// load the shape model from file
+		ShapePredictor model;
+		std::ifstream input(modelFileName.c_str());
+		model.deserialize(input);
+		input.close();
 
-	dir = opendir(argv[1]);
-	if (dir == NULL) return 1;
+		SampleList script(evaluateScriptFileName);
 
-    try
-    {
-        // And we also need a shape_predictor.  This is the tool that will predict face
-        // landmark positions given an image and face bounding box.  Here we are just
-        // loading the model from the shape_predictor_68_face_landmarks.dat file you gave
-        // as a command line argument.
-        ert::ShapePredictor sp;
-        //deserialize("sp.dat") >> sp;
+		CascadeClassifier faceCascade(FACE_CASCADE_FILE);
+		ViolaJones *detector = new ViolaJones(&faceCascade);
 
-        // Loop over all the images provided on the command line.
-        while ((entry = readdir(dir)) != NULL)
+		for (size_t i = 0; i < script.getImages().size(); ++i)
         {
-			if (entry->d_type != DT_REG) continue;
-			if (strstr(entry->d_name, ".pts") != NULL) continue;
-			if (strstr(entry->d_name, ".fit") != NULL) continue;
+			// using only the first face in each image
 
-            cout << "Processing image " << entry->d_name << endl;
+			Rect face;
+#if (0)
+			if (!detector->detect(*script.getImages()[i], face)) continue;
 
-			sprintf(imageFileName, "%s/%s", argv[1], entry->d_name);
+			Rect diff = script.getAnnotations()[i][0]->get_rect();
+			diff.x -= face.x;
+			diff.y -= face.y;
+			diff.width -= face.width;
+			diff.height -= face.height;
+			std::cout << "Original - Viola-Jones = " << diff << std::endl;
+#endif
+			face = script.getAnnotations()[i][0]->get_rect();
 
-			strncpy(temp, entry->d_name, sizeof(temp)-1);
-			for (pos = 0; temp[pos] != 0; ++pos)
+			ObjectDetection det = model.detect(*script.getImages()[i], face);
+			std::string fitFileName = script.getFileName(i, "fit");
+			std::cout << "Saving fitted points to " <<  fitFileName << std::endl;
+			det.save(fitFileName);
+#if (0)
+			for (int j = 0; j < (int)det.num_parts(); ++j)
 			{
-				if (temp[pos] == '.')
-				{
-					temp[pos] = 0;
-					break;
-				}
+					std::cout << "Gold: " << script.getAnnotations()[i][0]->part(j) <<
+						"\tFit: " << det.part(j) << std::endl;
 			}
-			sprintf(outputFileName, "%s/%s.fit", argv[1], temp);
-			sprintf(pointFileName, "%s/%s.pts", argv[1], temp);
-
-            Mat img;
-            img = cv::imread(imageFileName);
-            // Make the image larger so we can detect small faces.
-            //pyramid_up(images_test[i]);
-
-			computeBoundingBox(pointFileName, data, 0.1);
-			Rect rect( data[1], data[0], data[1] + data[3], data[0] + data[2]);
-			printf("{ (%d, %d) (%d, %d) }\n", int(data[1]), int(data[0]), int(data[3]), int(data[2]));
-            // Now tell the face detector to give us a list of bounding boxes
-            // around all the faces in the image.
-            //std::vector<rectangle> dets = detector(img);
-            //cout << "Number of faces detected: " << dets.size() << endl;
-
-            // Now we will go ask the shape_predictor to tell us the pose of
-            // each face we detected.
-            for (unsigned long j = 0; j < 1; ++j)
-            {
-                ert::FullObjectDetection shape = sp.detect(img, rect);
-                // You get the idea, you can get all the face part locations if
-                // you want them.  Here we just store them in shapes so we can
-                // put them on the screen.
-                FILE *output;
-
-                output = fopen(outputFileName, "wt");
-                if (output != NULL)
-                {
-					fprintf(output, "version: 1\nn_points:  %ld\n{\n", shape.num_parts());
-					for (unsigned long c = 0; c < shape.num_parts(); ++c)
-					{
-						fprintf(output, "%0.2f %0.2f\n",
-							(float)shape.part(c).x,
-							(float)shape.part(c).y );
-					}
-					fprintf(output, "}");
-					fclose(output);
-				}
-
-            }
+#endif
         }
-        closedir(dir);
-    }
-    catch (exception& e)
-    {
-        cout << "\nexception thrown!" << endl;
-        cout << e.what() << endl;
-    }
+
+        delete detector;
+
+	} catch (exception& e)
+	{
+		cout << "Exception thrown!" << endl;
+		cout << e.what() << endl;
+	}
 }
-
-// ----------------------------------------------------------------------------------------
-

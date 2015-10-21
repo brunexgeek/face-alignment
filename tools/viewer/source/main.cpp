@@ -250,7 +250,7 @@ char main_display(
 	main_plotFace(image, points, Scalar(255, 0, 0));
 	main_plotFace(image, fitted, Scalar(0, 0, 255));
 
-	Rect *bbox = main_computeBoundingBox(*points, 0.2);
+	Rect *bbox = main_computeBoundingBox(*points, 0.1);
 	if (bbox != NULL)
 	{
 		cv::rectangle(image, *bbox, Scalar(0, 255, 0));

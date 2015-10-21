@@ -28,8 +28,6 @@ PointTransformAffine unnormalizing_tform (
 );
 
 
-
-
 void plotFace(
 	Mat &image,
 	ObjectDetection &det,

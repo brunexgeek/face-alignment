@@ -1,6 +1,7 @@
 
 #include <opencv2/opencv.hpp>
 #include "../../../modules/face-landmark/source/ert/ShapePredictorTrainer.hh"
+#include "../../../modules/face-landmark/source/ert/SampleList.hh"
 
 #include <iostream>
 #include <fstream>
@@ -65,72 +66,6 @@ std::vector<std::vector<double> > get_interocular_distances (
 }
 
 
-
-void main_loadData(
-	const std::string &script,
-	std::vector<Mat*> &images,
-	std::vector<std::vector<ObjectDetection*> > &annots  )
-{
-	char line[128];
-	int imageCount = 0;
-
-	ifstream list(script.c_str());
-
-	// read the amount of files
-	list.getline(line, sizeof(line));
-	imageCount = atoi(line);
-
-	images.resize(imageCount);
-	annots.resize(imageCount);
-
-	for (int i = 0; i < imageCount; ++i)
-	{
-		// load the image
-		list.getline(line, sizeof(line) - 5);
-		std::cout << "Loading " << i << " of " << imageCount << ": " << line << std::endl;
-#if (0)
-		cv::Mat current;
-		cv::cvtColor(imread(line), current, CV_BGR2GRAY);
-#else
-		cv::Mat temp[3];
-		split(imread(line), temp);
-		temp[0].convertTo(temp[0], CV_32F);
-		temp[1].convertTo(temp[1], CV_32F);
-		temp[2].convertTo(temp[2], CV_32F);
-		cv::Mat current = temp[0] + temp[1] + temp[2];
-		current /= 3.0;
-		current.convertTo(current, CV_8U);
-		/*for (int r = 0; r < current.rows; ++r)
-			for (int c = 0; c < current.cols; ++c)
-				current.at<float>(r, c) = std::ceil( current.at<float>(r, c) );*/
-		//current.convertTo(current, CV_8U);
-//std::getchar();
-/*std::cout << temp[0]( cv::Range(0, 5), cv::Range(0, 5) ) << std::endl
-		  << temp[1]( cv::Range(0, 5), cv::Range(0, 5) ) << std::endl
-		  << temp[2]( cv::Range(0, 5), cv::Range(0, 5) ) << std::endl
-		  << current( cv::Range(0, 5), cv::Range(0, 5) ) << std::endl;
-*/
-/*cv::imshow("Test", temp[0]);
-cv::waitKey(0);*/
-#endif
-		images[i] = new cv::Mat(current);
-		// load the annotations
-		int pos = strrchr(line, '.') - line;
-		if (pos >= 0)
-		{
-			line[pos] = 0;
-			strcat(line, ".pts");
-		}
-		else
-			return;
-		std::vector<ObjectDetection*> annot;
-		annot.push_back( new ObjectDetection(line) );
-		annots[i] = annot;
-	}
-}
-
-
-
 void main_usage()
 {
     std::cerr << "Usage: tool_train -t <script file> -m <model file> [ -a ]" << std::endl;
@@ -169,7 +104,6 @@ void main_parseOptions( int argc, char **argv )
 	}
 }
 
-
 int main(int argc, char** argv)
 {
 	main_parseOptions(argc, argv);
@@ -178,9 +112,7 @@ int main(int argc, char** argv)
 	{
 		try
 		{
-			std::vector<Mat*> imagesTrain;
-			std::vector<std::vector<ObjectDetection*> > annotsTrain;
-			main_loadData(trainScriptFileName, imagesTrain, annotsTrain);
+			SampleList script(trainScriptFileName);
 
 			// create the training object
 			ShapePredictorTrainer trainer;
@@ -193,17 +125,17 @@ int main(int argc, char** argv)
 			trainer.be_verbose();
 
 			// generate the shape model and save in disk
-			ShapePredictor sp = trainer.train(imagesTrain, annotsTrain);
+			ShapePredictor model = trainer.train(script.getImages(), script.getAnnotations());
 
 			if (!modelFileName.empty())
 			{
 				std::ofstream output(modelFileName.c_str());
-				sp.serialize(output);
+				model.serialize(output);
 				output.close();
 			}
 
 			cout << endl << "Mean training error: " <<
-				test_shape_predictor(sp, imagesTrain, annotsTrain, get_interocular_distances(annotsTrain)) << endl;
+				test_shape_predictor(model, script.getImages(), script.getAnnotations(), get_interocular_distances(script.getAnnotations())) << endl;
 		} catch (exception& e)
 		{
 			cout << "Exception thrown!" << endl;
@@ -220,14 +152,12 @@ int main(int argc, char** argv)
 			model.deserialize(input);
 			input.close();
 
-			std::vector<Mat*> imagesEval;
-			std::vector<std::vector<ObjectDetection*> > annotsEval;
-			main_loadData(evaluateScriptFileName, imagesEval, annotsEval);
+			SampleList script(evaluateScriptFileName);
 
 			// measures the average distance between the predicted face landmark
 			// and where it should be according to the truth data.
 			cout << endl << "Mean evaluating error: " <<
-				test_shape_predictor(model, imagesEval, annotsEval, get_interocular_distances(annotsEval)) << endl;
+				test_shape_predictor(model, script.getImages(), script.getAnnotations(), get_interocular_distances(script.getAnnotations())) << endl;
 
 		} catch (exception& e)
 		{
