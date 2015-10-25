@@ -1,5 +1,6 @@
 
 #include <opencv2/opencv.hpp>
+#include <face-detector/detector.hpp>
 #include "../../../modules/face-landmark/source/ert/ShapePredictorTrainer.hh"
 #include "../../../modules/face-landmark/source/ert/SampleList.hh"
 
@@ -8,17 +9,96 @@
 #include <cstring>
 #include <getopt.h>
 
+
+#define FACE_CASCADE_FILE     "haarcascade_frontalface_alt2.xml"
+
+
 using namespace ert;
 using namespace std;
+using namespace vasr::detector;
 
 
-string trainScriptFileName = "";
+static string trainScriptFileName = "";
 
-string evaluateScriptFileName = "";
+static string evaluateScriptFileName = "";
 
-string modelFileName = "";
+static string modelFileName = "";
 
-bool absoluteScore = false;
+static bool useAbsoluteScore = false;
+
+static bool useViolaJones = false;
+
+
+class MainSampleLoader : public SampleLoader
+{
+
+	public:
+		MainSampleLoader( bool useViolaJones );
+
+		~MainSampleLoader();
+
+		void load(
+			const std::string &imageFileName,
+			cv::Mat &image,
+			ObjectDetection &annot );
+
+	private:
+		ViolaJones *detector;
+		CascadeClassifier *faceCascade;
+		bool useViolaJones;
+
+};
+
+
+MainSampleLoader::MainSampleLoader( bool useViolaJones )
+{
+	this->useViolaJones = useViolaJones;
+	faceCascade = new CascadeClassifier(FACE_CASCADE_FILE);
+	detector = new ViolaJones(faceCascade);
+}
+
+MainSampleLoader::~MainSampleLoader()
+{
+	delete detector;
+	delete faceCascade;
+}
+
+
+void MainSampleLoader::load(
+	const std::string &imageFileName,
+	cv::Mat &image,
+	ObjectDetection &annot )
+{
+	// load the image
+#if (0)
+	cv::cvtColor(imread(line), image, CV_BGR2GRAY);
+#else
+	cv::Mat temp[3];
+	cv::split(imread(imageFileName), temp);
+	temp[0].convertTo(temp[0], CV_32F);
+	temp[1].convertTo(temp[1], CV_32F);
+	temp[2].convertTo(temp[2], CV_32F);
+	image = temp[0] + temp[1] + temp[2];
+	image /= 3.0;
+	image.convertTo(image, CV_8U);
+#endif
+
+	Rect face;
+	if (useViolaJones && !detector->detect(image, face))
+		throw 1;
+
+	// load the annotations
+	std::string pointsFile = SampleList::changeExtension(imageFileName, "pts");
+	try
+	{
+		annot.load(pointsFile);
+		if (useViolaJones) annot.set_rect(face);
+
+	} catch (...)
+	{
+		std::cout << "   Ignoring file " << pointsFile << std::endl;
+	}
+}
 
 
 double interocular_distance (
@@ -68,8 +148,16 @@ std::vector<std::vector<double> > get_interocular_distances (
 
 void main_usage()
 {
-    std::cerr << "Usage: tool_train -t <script file> -m <model file> [ -a ]" << std::endl;
-    std::cerr << "       tool_train -e <script file> -m <model file> [ -a ]" << std::endl;
+    std::cerr << "Usage: tool_train -t <script file> -m <model file> [ -v -a ]" << std::endl;
+    std::cerr << "       tool_train -e <script file> -m <model file> [ -v -a ]" << std::endl << std::endl;
+    std::cerr << "   -t  Train a new model using the given script file" << std::endl;
+    std::cerr << "   -e  Evaluate an existing model using the given script file" << std::endl;
+    std::cerr << "   -m  Model file name. In evaluate mode this file must exists." << std::endl;
+    std::cerr << "   -v  Use Viola-Jones face detector instead of computing the bounding" << std::endl;
+    std::cerr << "       using the part annotations (rectangle covering all points plus" << std::endl;
+    std::cerr << "       10% border)." << std::endl;
+    std::cerr << "   -a  Show absolute errors. The default behavior is normalize" << std::endl;
+    std::cerr << "       the error by the face size." << std::endl;
     exit(EXIT_FAILURE);
 }
 
@@ -78,7 +166,7 @@ void main_parseOptions( int argc, char **argv )
 {
     int opt;
 
-    while ((opt = getopt(argc, argv, "t:e:m:a")) != -1)
+    while ((opt = getopt(argc, argv, "t:e:m:av")) != -1)
     {
         switch (opt)
         {
@@ -92,8 +180,11 @@ void main_parseOptions( int argc, char **argv )
 				modelFileName = string(optarg);
 				break;
             case 'a':
-                absoluteScore = true;
+                useAbsoluteScore = true;
                 break;
+            case 'v':
+				useViolaJones = true;
+				break;
             default: /* '?' */
                 main_usage();
         }
@@ -112,7 +203,8 @@ int main(int argc, char** argv)
 	{
 		try
 		{
-			SampleList script(trainScriptFileName);
+			MainSampleLoader sloader = MainSampleLoader(useViolaJones);
+			SampleList script(trainScriptFileName, &sloader);
 
 			// create the training object
 			ShapePredictorTrainer trainer;
@@ -120,7 +212,7 @@ int main(int argc, char** argv)
 			trainer.set_oversampling_amount(20);
 			trainer.set_cascade_depth(10);
 			trainer.set_num_trees_per_cascade_level(500);
-			trainer.set_nu(0.05);
+			//trainer.set_nu(0.05);
 			trainer.set_tree_depth(2);
 			trainer.be_verbose();
 
@@ -152,7 +244,8 @@ int main(int argc, char** argv)
 			model.deserialize(input);
 			input.close();
 
-			SampleList script(evaluateScriptFileName);
+			MainSampleLoader sloader = MainSampleLoader(useViolaJones);
+			SampleList script(evaluateScriptFileName, &sloader);
 
 			// measures the average distance between the predicted face landmark
 			// and where it should be according to the truth data.

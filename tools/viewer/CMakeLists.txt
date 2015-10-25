@@ -6,7 +6,7 @@ include_directories(
 file(GLOB TOOL_VIEWER_SRC "source/*.cpp")
 
 add_executable(tool_viewer ${TOOL_VIEWER_SRC} )
-target_link_libraries(tool_viewer ${OpenCV_LIBS})
+target_link_libraries(tool_viewer module_landmark ${OpenCV_LIBS})
 set_target_properties(tool_viewer PROPERTIES
     OUTPUT_NAME "tool_viewer"
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}" )

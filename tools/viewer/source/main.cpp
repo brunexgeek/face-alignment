@@ -6,9 +6,11 @@
 #include <getopt.h>
 #include <dirent.h>
 #include <cmath>
-
+#include "../../../modules/face-landmark/source/ert/ObjectDetection.hh"
+#include "../../../modules/face-landmark/source/ert/SampleList.hh"
 
 using namespace cv;
+using namespace ert;
 
 
 #define MAX_LONG_EDGE         1000.0
@@ -23,10 +25,41 @@ using namespace cv;
 
 
 const char *imageFileName = NULL;
+
+
 const char *pointsFileName = NULL;
+
 const char *fittedFileName = NULL;
+
 const char *directory = NULL;
 
+bool showGoldParts = true;
+
+bool showFittedParts = true;
+
+
+const uint16_t LAYOUT_68_PARTS[] =
+{
+	// contorno da face
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, ObjectDetection::OPEN,
+	// sobrancelha esquerda
+	17, 18, 19, 20, 21, ObjectDetection::OPEN,
+	// sobrancelha direita
+	22, 23, 24, 25, 26, ObjectDetection::OPEN,
+	// linha vertical do nariz
+	27, 28, 29, 30, ObjectDetection::OPEN,
+	// linha horizontal do nariz
+	31, 32, 33, 34, 35, ObjectDetection::OPEN,
+	// olho esquerdo
+	36, 37, 38, 39, 40, 41, ObjectDetection::CLOSE,
+	// olho direito
+	42, 43, 44, 45, 46, 47, ObjectDetection::CLOSE,
+	// parte externa da boca
+	48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, ObjectDetection::CLOSE,
+	// parte interna da boca
+	60, 61, 62, 63, 64, 65, 66, 67, ObjectDetection::CLOSE,
+	ObjectDetection::END
+};
 
 void main_usage()
 {
@@ -67,7 +100,7 @@ void main_parseOptions( int argc, char **argv )
 }
 
 
-static void main_println( Mat &image, int x, int y, int line, const char *text )
+static void main_println( Mat &image, int x, int y, int line, const std::string &text )
 {
     Size size;
     int baseline;
@@ -84,146 +117,37 @@ static void main_println( Mat &image, int x, int y, int line, const char *text )
 }
 
 
-std::vector<Point> *loadPointsFile( const char *fileName )
-{
-	char *line;
-	size_t len = 0;
-	float x, y;
-	int lines = 0;
-	FILE *fp;
-	int p;
-	std::vector<Point> *points = NULL;
-	char s[32];
-
-	fp = fopen(fileName, "rt");
-	if (fp == NULL) return 0;
-
-	while(!feof(fp))
-	{
-		if ( getline(&line, &len, fp) < 0) continue;
-
-		if ( points == NULL && strstr(line, "n_points:") != NULL )
-		{
-			if (sscanf(line, "%s %i", s, &p) == 2)
-				points = new std::vector<Point>(p);
-		}
-
-		if ( points != NULL && sscanf(line, "%f %f", &x, &y) == 2)
-		{
-			(*points)[lines] = Point(x, y);;
-			lines++;
-		}
-	}
-	fclose(fp);
-
-	return points;
-}
-
-
-Point2f operator*(cv::Mat M, const cv::Point2f& p)
-{
-	cv::Mat src(3/*rows*/,1 /* cols */,CV_64F);
-
-	src.at<double>(0,0)=p.x;
-	src.at<double>(1,0)=p.y;
-	src.at<double>(2,0)=1.0;
-
-	cv::Mat dst = M*src; //USE MATRIX ALGEBRA
-	return cv::Point2f(dst.at<double>(0,0),dst.at<double>(1,0));
-}
-
-
-Rect *main_computeBoundingBox(
-	std::vector<Point> &points,
-	float border )
-{
-	float x, y;
-	float minX = 100000, minY = 100000, maxX = -100, maxY = -100;
-	Rect *bbox = new Rect(0, 0, 0, 0);
-
-	for (size_t i = 0; i < points.size(); ++i)
-	{
-		x = points[i].x;
-		y = points[i].y;
-		if (minX > x) minX = x;
-		if (minY > y) minY = y;
-		if (maxX < x) maxX = x;
-		if (maxY < y) maxY = y;
-	}
-
-	bbox->x = minX;
-	bbox->y = minY;
-	bbox->width = maxX - minX;
-	bbox->height = maxY - minY;
-
-	bbox->x -= (float(bbox->width) * border);
-	bbox->y -= (float(bbox->height) * border);
-	bbox->width += (float(bbox->width) * (border * 2));
-	bbox->height += (float(bbox->height) * (border * 2));
-
-	printf("{ (%d, %d) (%d, %d) }\n", bbox->x, bbox->y, bbox->width, bbox->height);
-
-	return bbox;
-}
-
-
-void main_plotFace(
-	Mat &image,
-	std::vector<Point> *points,
-	const Scalar &color )
-{
-	if (points != NULL)
-	{
-		// contorno da face
-		for (size_t i = 0; i < 16; ++i)
-			cv::line(image, (*points)[i], (*points)[i+1], color, 1);
-		// sobrancelha esquerda
-		for (size_t i = 17; i < 21; ++i)
-			cv::line(image, (*points)[i], (*points)[i+1], color, 1);
-		// sonbrancelha direita
-		for (size_t i = 22; i < 26; ++i)
-			cv::line(image, (*points)[i], (*points)[i+1], color, 1);
-		// linha vertical do nariz
-		for (size_t i = 27; i < 30; ++i)
-			cv::line(image, (*points)[i], (*points)[i+1], color, 1);
-		// linha horizontal do nariz
-		for (size_t i = 31; i < 35; ++i)
-			cv::line(image, (*points)[i], (*points)[i+1], color, 1);
-		// olho esquerdo
-		for (size_t i = 36; i < 41; ++i)
-			cv::line(image, (*points)[i], (*points)[i+1], color, 1);
-		cv::line(image, (*points)[41], (*points)[36], color, 1);
-		// olho direito
-		for (size_t i = 42; i < 47; ++i)
-			cv::line(image, (*points)[i], (*points)[i+1], color, 1);
-		cv::line(image, (*points)[47], (*points)[42], color, 1);
-		// parte externa da boca
-		for (size_t i = 48; i < 59; ++i)
-			cv::line(image, (*points)[i], (*points)[i+1], color, 1);
-		cv::line(image, (*points)[59], (*points)[48], color, 1);
-		// parte externa da boca
-		for (size_t i = 60; i < 67; ++i)
-			cv::line(image, (*points)[i], (*points)[i+1], color, 1);
-		cv::line(image, (*points)[67], (*points)[60], color, 1);
-	}
-}
-
-
 char main_display(
-	const char *imageFile,
-	const char *pointsFile,
-	const char *fittedFile )
+	const std::string &imageFile,
+	const std::string &pointsFile,
+	const std::string &fittedFile )
 {
 	char key;
 	int longEdge;
 	float factor = 1;
-	size_t i;
 
 	std::cout << "Displaying " << imageFile << std::endl;
 
 	Mat image = imread(imageFile);
-	std::vector<Point> *points = loadPointsFile(pointsFile);
-	std::vector<Point> *fitted = loadPointsFile(fittedFile);
+	ObjectDetection gold(pointsFile);
+	ObjectDetection fitted(fittedFile);
+
+	// compute the ROI
+	Rect area = gold.get_rect();
+	float border = std::max( (area.width * 0.1), (area.height * 0.1) );
+	area.x      -= border;
+	area.width  += border * 2;
+	area.y      -= border;
+	area.height += border * 2;
+	// adjust the ROI to fit in the image
+	if (area.x < 0) area.x = 0;
+	if (area.y < 0) area.y = 0;
+	if (area.x + area.width > image.cols) area.width = image.cols - area.x;
+	if (area.y + area.height > image.rows) area.height = image.rows - area.y;
+	// crop the original image
+	image = image(area);
+	gold -= Point2f( area.x, area.y );
+	fitted -= Point2f( area.x, area.y );
 
 	//longEdge = std::max(image.rows, image.cols);
 	longEdge = image.rows;
@@ -234,33 +158,25 @@ char main_display(
 		resize(image, image,
 			cv::Size( round( (float)image.cols / factor ), round( (float)image.rows / factor ) ) );
 
-		for (i = 0; points != NULL && i < points->size(); ++i)
-		{
-			(*points)[i].x = round( (float)(*points)[i].x / factor );
-			(*points)[i].y = round( (float)(*points)[i].y / factor );
-		}
-
-		for (i = 0; fitted != NULL && i < fitted->size(); ++i)
-		{
-			(*fitted)[i].x = round( (float)(*fitted)[i].x / factor );
-			(*fitted)[i].y = round( (float)(*fitted)[i].y / factor );
-		}
+		gold /= factor;
+		fitted /= factor;
 	}
 
-	main_plotFace(image, points, Scalar(255, 0, 0));
-	main_plotFace(image, fitted, Scalar(0, 0, 255));
+	// plot the parts
+	if (showGoldParts)
+		gold.plot(image, LAYOUT_68_PARTS, Scalar(255, 0, 0));
+	if (showFittedParts)
+		fitted.plot(image, LAYOUT_68_PARTS, Scalar(0, 0, 255));
+	// plot an rectangle to show the bouding box
+	cv::rectangle(image, gold.get_rect(), Scalar(0, 255, 0));
 
-	Rect *bbox = main_computeBoundingBox(*points, 0.1);
-	if (bbox != NULL)
-	{
-		cv::rectangle(image, *bbox, Scalar(0, 255, 0));
-	}
+	main_println(image, 0, 0, 0, imageFile);
 
     imshow("Image", image);
     while (1)
     {
 		key = waitKey(0);
-		if (key == 'q' || key == ',' || key == '.') break;
+		if (key == 'q' || key == ',' || key == '.' || key == 'g' || key == 'f') break;
 	}
 
 	return key;
@@ -278,9 +194,9 @@ std::vector<string> *main_listDirectory(
 
 	while ((entry = readdir(dir)) != NULL)
 	{
-		if (strstr(entry->d_name, ".jpg") == NULL) continue;
+		if (strstr(entry->d_name, ".jpg") == NULL &&
+		    strstr(entry->d_name, ".png") == NULL) continue;
 
-		entry->d_name[ strlen(entry->d_name) - 4 ] = 0;
 		list->push_back(entry->d_name);
 	}
 
@@ -300,22 +216,26 @@ int main( int argc, char** argv )
 			int index = 0;
 			while (1)
 			{
-				string fileName = string(directory) + "/" + files->at(index);
-				string imageFile = fileName + ".jpg";
-				string pointsFile = fileName + ".pts";
-				string fittedFile = fileName + ".fit";
-				char key = main_display(imageFile.c_str(), pointsFile.c_str(), fittedFile.c_str());
-				if (key == ',')
+				string imageFile = string(directory) + "/" + files->at(index);
+				string pointsFile = SampleList::changeExtension(imageFile, "pts");
+				string fittedFile = SampleList::changeExtension(imageFile, "fit");
+				char key = main_display(imageFile, pointsFile, fittedFile);
+				switch (key)
 				{
-					--index;
-					if (index < 0) index = 0;
-					continue;
-				}
-				if (key == '.')
-				{
-					++index;
-					if (index >= (int)files->size()) index = files->size() - 1;
-					continue;
+					case ',':
+						--index;
+						if (index < 0) index = 0;
+						continue;
+					case '.':
+						++index;
+						if (index >= (int)files->size()) index = files->size() - 1;
+						continue;
+					case 'f':
+						showFittedParts = !showFittedParts;
+						break;
+					case 'g':
+						showGoldParts = !showGoldParts;
+						break;
 				}
 				if (key == 'q') break;
 			}

@@ -15,171 +15,91 @@ namespace ert {
 
 using namespace cv;
 
-// ----------------------------------------------------------------------------------------
-
-    const static Point2f OBJECT_PART_NOT_PRESENT(0x7FFFFFFF,
-                                                0x7FFFFFFF);
-
-// ----------------------------------------------------------------------------------------
-
-    class ObjectDetection
-    {
-		public:
-
-			ObjectDetection( const Rect& rect_, const std::vector<Point2f>& parts_ )
-			{
-				rect = rect_;
-				parts = parts_;
-			}
-
-			ObjectDetection( const char *fileName )
-			{
-				loadPoints(fileName);
-				computeBoundingBox(0.1);
-			}
-
-			ObjectDetection()
-			{
-			}
-
-			explicit ObjectDetection(
-				const Rect& rect_
-			) : rect(rect_)
-			{
-			}
-
-			const Rect& get_rect() const { return rect; }
-			Rect& get_rect() { return rect; }
-			unsigned long num_parts() const { return parts.size(); }
 
 
-			const Point2f& part( unsigned long idx ) const
-			{
-				// make sure requires clause is not broken
-				/*DLIB_ASSERT(idx < num_parts(),
-					"\t point full_object_detection::part()"
-					<< "\n\t Invalid inputs were given to this function "
-					<< "\n\t idx:         " << idx
-					<< "\n\t num_parts(): " << num_parts()
-					<< "\n\t this:        " << this
-					);*/
-				return parts[idx];
-			}
+class ObjectDetection
+{
+	public:
+		const static Point2f OBJECT_PART_NOT_PRESENT;
+
+		const static uint16_t OPEN = 0xFFF0;
+
+		const static uint16_t CLOSE = 0xFFFC;
+
+		const static uint16_t END = 0xFFFE;
+
+		ObjectDetection( const Rect& rect_, const std::vector<Point2f>& parts_ );
+
+		ObjectDetection( const std::string &fileName );
+
+		ObjectDetection();
+
+		explicit ObjectDetection(
+			const Rect& rect );
+
+		const Rect& get_rect() const
+		{
+			return rect;
+		}
+
+		Rect& get_rect()
+		{
+			return rect;
+		}
+
+		void set_rect(
+			Rect &rect )
+		{
+			this->rect = rect;
+		}
+
+		unsigned long num_parts() const
+		{
+			return parts.size();
+		}
+
+		const Point2f& part( unsigned long idx ) const
+		{
+			// make sure requires clause is not broken
+			/*DLIB_ASSERT(idx < num_parts(),
+				"\t point full_object_detection::part()"
+				<< "\n\t Invalid inputs were given to this function "
+				<< "\n\t idx:         " << idx
+				<< "\n\t num_parts(): " << num_parts()
+				<< "\n\t this:        " << this
+				);*/
+			return parts[idx];
+		}
 
 
-			void computeBoundingBox(
-				float border )
-			{
-				float x, y;
-				float minX = 100000, minY = 100000, maxX = -100, maxY = -100;
-				Rect bbox = Rect(0, 0, 0, 0);
+		void computeBoundingBox(
+			float border );
 
-				for (size_t i = 0; i < parts.size(); ++i)
-				{
-					x = parts[i].x;
-					y = parts[i].y;
-					if (minX > x) minX = x;
-					if (minY > y) minY = y;
-					if (maxX < x) maxX = x;
-					if (maxY < y) maxY = y;
-				}
+		void save(
+			const string& fileName ) const;
 
-				bbox.x = minX;
-				bbox.y = minY;
-				bbox.width = maxX - minX;
-				bbox.height = maxY - minY;
+		void load(
+			const std::string &fileName );
 
-				bbox.x -= (float(bbox.width) * border);
-				bbox.y -= (float(bbox.height) * border);
-				bbox.width += (float(bbox.width) * (border * 2));
-				bbox.height += (float(bbox.height) * (border * 2));
+		bool isAllPartsInRect (
+			const Rect& area ) const;
 
-				printf("{ Pos: %d x %d    Size : %d x %d    End: %d x %d }\n",
-					bbox.x, bbox.y, bbox.width, bbox.height, bbox.x + bbox.width,
-					bbox.y + bbox.height);
+		void plot(
+			cv::Mat &output,
+			const uint16_t *layout,
+			const Scalar &color ) const;
 
-				this->rect = bbox;
-			}
+		ObjectDetection &operator/=( float factor );
 
+		ObjectDetection &operator-=( const Point2f &factor );
 
-			void save( const string& fileName ) const
-			{
-				std::ofstream out(fileName.c_str());
+	private:
+		Rect rect;
+		std::vector<Point2f> parts;
 
-				out << "version: 1" << std::endl;
-				out << "n_points: " << num_parts() << std::endl;
-				out << "{" << std::endl;
-
-				for (int i = 0; i < (int)num_parts(); ++i)
-				{
-					const Point2f &point = part(i);
-					out << floor(point.x) << " " << floor(point.y) << std::endl;
-				}
-
-				out << "}";
-				out.close();
-			}
-
-			void loadPoints( const char *fileName )
-			{
-				char *line;
-				size_t len = 0;
-				float x, y;
-				int lines = 0;
-				FILE *fp;
-				//int p;
-				//char s[32];
-
-				fp = fopen(fileName, "rt");
-				if (fp == NULL) return;
-
-				while(!feof(fp))
-				{
-					if ( getline(&line, &len, fp) < 0) continue;
-
-					/*if ( points == NULL && strstr(line, "n_points:") != NULL )
-					{
-						if (sscanf(line, "%s %i", s, &p) == 2)
-							points = new std::vector<Point2f>(p);
-					}*/
-
-					if ( sscanf(line, "%f %f", &x, &y) == 2)
-					{
-						parts.push_back( Point2f( std::floor(x), std::floor(y) ) );
-						lines++;
-					}
-				}
-				fclose(fp);
-			}
-
-			void load(
-				const std::string &fileName )
-			{
-				loadPoints(fileName.c_str());
-				computeBoundingBox(0.1);
-			}
-
-		private:
-			Rect rect;
-			std::vector<Point2f> parts;
-    };
-
-// ----------------------------------------------------------------------------------------
-
-    inline bool all_parts_in_rect (
-        const ObjectDetection& obj
-    )
-    {
-        for (unsigned long i = 0; i < obj.num_parts(); ++i)
-        {
-            if (obj.get_rect().contains(obj.part(i)) == false &&
-                obj.part(i) != OBJECT_PART_NOT_PRESENT)
-                return false;
-        }
-        return true;
-    }
-
-// ----------------------------------------------------------------------------------------
+		void loadPoints(
+			const std::string &fileName );
+};
 
 }
 

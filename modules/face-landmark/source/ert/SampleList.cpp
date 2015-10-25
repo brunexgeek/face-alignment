@@ -47,7 +47,7 @@ SampleList::SampleList(
 	SampleLoader *loader )
 {
 	char line[256];
-	int imageCount = 0;
+	int imageCount = 0, i = 0;
 	BasicSampleLoader defaultLoader;
 
 	if (loader == NULL) loader = &defaultLoader;
@@ -63,11 +63,11 @@ SampleList::SampleList(
 	annotations.resize(imageCount);
 	imageFileNames.resize(imageCount);
 
-	for (int i = 0; i < imageCount; ++i)
+	for (int j = 0; j < imageCount; ++j)
 	{
 		list.getline(line, sizeof(line) - 5);
 
-		std::cout << "Loading " << i << " of " << imageCount << ": " << line << std::endl;
+		//std::cout << "Loading " << i << " of " << imageCount << ": " << line << std::endl;
 
 		try
 		{
@@ -81,11 +81,17 @@ SampleList::SampleList(
 			std::vector<ObjectDetection*> temp;
 			temp.push_back(annot);
 			annotations[i] = temp;
+			++i;
 		} catch (...)
 		{
 			std::cout << "Ops" << std::endl;
 		}
 	}
+
+	images.resize(i);
+	annotations.resize(i);
+	imageFileNames.resize(i);
+	std::cout << images.size() << std::endl;
 }
 
 
