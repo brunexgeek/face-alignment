@@ -28,48 +28,6 @@ PointTransformAffine unnormalizing_tform (
 );
 
 
-void plotFace(
-	Mat &image,
-	ObjectDetection &det,
-	const Scalar &color,
-	int thickness = 1 )
-{
-	{
-		// contorno da face
-		for (size_t i = 0; i < 16; ++i)
-			cv::line(image, det.part(i), det.part(i+1), color, thickness);
-		// sobrancelha esquerda
-		for (size_t i = 17; i < 21; ++i)
-			cv::line(image, det.part(i), det.part(i+1), color, thickness);
-		// sonbrancelha direita
-		for (size_t i = 22; i < 26; ++i)
-			cv::line(image, det.part(i), det.part(i+1), color, thickness);
-		// linha vertical do nariz
-		for (size_t i = 27; i < 30; ++i)
-			cv::line(image, det.part(i), det.part(i+1), color, thickness);
-		// linha horizontal do nariz
-		for (size_t i = 31; i < 35; ++i)
-			cv::line(image, det.part(i), det.part(i+1), color, thickness);
-		// olho esquerdo
-		for (size_t i = 36; i < 41; ++i)
-			cv::line(image, det.part(i), det.part(i+1), color, thickness);
-		cv::line(image, det.part(41), det.part(36), color, thickness);
-		// olho direito
-		for (size_t i = 42; i < 47; ++i)
-			cv::line(image, det.part(i), det.part(i+1), color, thickness);
-		cv::line(image, det.part(47), det.part(42), color, thickness);
-		// parte externa da boca
-		for (size_t i = 48; i < 59; ++i)
-			cv::line(image, det.part(i), det.part(i+1), color, thickness);
-		cv::line(image, det.part(59), det.part(48), color, thickness);
-		// parte externa da boca
-		for (size_t i = 60; i < 67; ++i)
-			cv::line(image, det.part(i), det.part(i+1), color, thickness);
-		cv::line(image, det.part(67), det.part(60), color, thickness);
-	}
-}
-
-
 void printRow( std::ostream& os, bool isX, const ObjectDetection& obj )
 {
 	int c;
@@ -234,12 +192,14 @@ ShapePredictor::ShapePredictor (
 
 ObjectDetection ShapePredictor::detect(
 	const Mat& img,
-	const Rect& rect
-) const
+	const Rect& rect,
+	ShapePredictorViewer *viewer ) const
 {
 	Mat current_shape;
 	initial_shape.copyTo(current_shape);
-//std::cout << "detect initial shape \n" << initial_shape << std::endl;
+
+	const PointTransformAffine tform_to_img = unnormalizing_tform(rect);
+
 	std::vector<double> feature_pixel_values;
 	for (unsigned long iter = 0; iter < forests.size(); ++iter)
 	{
@@ -249,15 +209,119 @@ ObjectDetection ShapePredictor::detect(
 			std::cout << feature_pixel_values[i] << std::endl;*/
 		// evaluate all the trees at this level of the cascade.
 		for (unsigned long i = 0; i < forests[iter].size(); ++i)
+		{
 			current_shape += forests[iter][i](feature_pixel_values);
+
+			if (viewer != NULL)
+			{
+				std::vector<Point2f> parts(current_shape.cols);
+				for (unsigned long j = 0; j < parts.size(); ++j)
+					parts[j] = tform_to_img(location(current_shape, j));
+				viewer->show( iter, i, ObjectDetection(rect, parts) );
+			}
+		}
 	}
 
 	// convert the current_shape into a full_object_detection
-	const PointTransformAffine tform_to_img = unnormalizing_tform(rect);
+
 	std::vector<Point2f> parts(current_shape.cols);
 	for (unsigned long i = 0; i < parts.size(); ++i)
 		parts[i] = tform_to_img(location(current_shape, i));
 	return ObjectDetection(rect, parts);
+}
+
+
+void ShapePredictor::serialize( std::ostream &out ) const
+{
+	// serialize the initial shape
+	Serializable::serialize(out, initial_shape);
+
+	// serialize the forests
+	Serializable::serialize(out, forests.size());
+	for (size_t i = 0; i < forests.size(); ++i)
+	{
+		const std::vector<RegressionTree> &current = forests[i];
+
+		Serializable::serialize(out, current.size());
+		for (size_t j = 0; j < current.size(); ++j)
+			current[j].serialize(out);
+	}
+
+	// serialize the anchors
+	Serializable::serialize(out, anchor_idx.size());
+	for (size_t i = 0; i < anchor_idx.size(); ++i)
+	{
+		const std::vector<unsigned long> &current = anchor_idx[i];
+
+		Serializable::serialize(out, current.size());
+		for (size_t j = 0; j < current.size(); ++j)
+			Serializable::serialize(out, current[j]);
+	}
+
+	// serialize the deltas
+	Serializable::serialize(out, deltas.size());
+	for (size_t i = 0; i < deltas.size(); ++i)
+	{
+		const std::vector<Point2f> &current = deltas[i];
+
+		Serializable::serialize(out, current.size());
+		for (size_t j = 0; j < current.size(); ++j)
+			Serializable::serialize(out, current[j]);
+	}
+}
+
+
+void ShapePredictor::deserialize( std::istream &in )
+{
+	// deserialize the initial shape
+	Serializable::deserialize(in, initial_shape);
+
+	// deserialize the forests
+	size_t entries;
+	Serializable::deserialize(in, entries);
+	forests.resize(entries);
+	for (size_t i = 0; i < entries; ++i)
+	{
+		size_t entries;
+		Serializable::deserialize(in, entries);
+
+		std::vector<RegressionTree> &current = forests[i];
+		current.resize(entries);
+
+		for (size_t j = 0; j < current.size(); ++j)
+			current[j].deserialize(in);
+	}
+
+	// deserialize the anchors
+	Serializable::deserialize(in, entries);
+	anchor_idx.resize(entries);
+	for (size_t i = 0; i < entries; ++i)
+	{
+		size_t entries;
+		Serializable::deserialize(in, entries);
+
+		std::vector<unsigned long> &current = anchor_idx[i];
+		current.resize(entries);
+
+		for (size_t j = 0; j < current.size(); ++j)
+			Serializable::deserialize(in, current[j]);
+	}
+
+	// serialize the deltas
+	Serializable::deserialize(in, entries);
+	deltas.resize(entries);
+	for (size_t i = 0; i < entries; ++i)
+	{
+		size_t entries;
+		Serializable::deserialize(in, entries);
+
+		std::vector<Point2f> &current = deltas[i];
+		current.resize(entries);
+
+		for (size_t j = 0; j < current.size(); ++j)
+			Serializable::deserialize(in, current[j]);
+	}
+
 }
 
 

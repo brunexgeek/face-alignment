@@ -170,6 +170,7 @@ add_subdirectory(modules/face-landmark)
 add_subdirectory(tools/viewer)
 add_subdirectory(tools/test)
 add_subdirectory(tools/train)
+add_subdirectory(tools/simulate)
 
 
 ################################################################################
