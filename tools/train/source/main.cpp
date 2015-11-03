@@ -28,6 +28,10 @@ static bool useAbsoluteScore = false;
 
 static bool useViolaJones = false;
 
+static int configTreeDepth = 0;
+
+static int configTestSplits = 0;
+
 
 class MainSampleLoader : public SampleLoader
 {
@@ -193,7 +197,7 @@ void main_parseOptions( int argc, char **argv )
 {
     int opt;
 
-    while ((opt = getopt(argc, argv, "t:e:m:av")) != -1)
+    while ((opt = getopt(argc, argv, "t:e:m:avd:s:")) != -1)
     {
         switch (opt)
         {
@@ -211,6 +215,12 @@ void main_parseOptions( int argc, char **argv )
                 break;
             case 'v':
 				useViolaJones = true;
+				break;
+			case 's':
+				configTestSplits = atoi(optarg);
+				break;
+			case 'd':
+				configTreeDepth = atoi(optarg);
 				break;
             default: /* '?' */
                 main_usage();
@@ -240,8 +250,17 @@ int main(int argc, char** argv)
 			trainer.set_cascade_depth(10);
 			trainer.set_num_trees_per_cascade_level(500);
 			//trainer.set_nu(0.05);
-			trainer.set_tree_depth(2);
+			if (configTreeDepth != 0)
+				trainer.set_tree_depth(configTreeDepth);
+			if (configTestSplits != 0)
+				trainer.set_num_test_splits(configTestSplits);
 			trainer.be_verbose();
+
+			std::cout << "      Cascade depth: " << trainer.get_cascade_depth() << std::endl;
+			std::cout << "  Trees per cascade: " << trainer.get_num_trees_per_cascade_level() << std::endl;
+			std::cout << "         Tree depth: " << trainer.get_tree_depth() << std::endl;
+			std::cout << "Oversampling amount: " << trainer.get_oversampling_amount() << std::endl;
+			std::cout << "   Number of splits: " << trainer.get_num_test_splits() << std::endl << std::endl;
 
 			// generate the shape model and save in disk
 			ShapePredictor model = trainer.train(script.getImages(), script.getAnnotations());
