@@ -6,20 +6,22 @@
 #include <getopt.h>
 #include <dirent.h>
 #include <cmath>
+#include <face-detector/detector.hpp>
 #include "../../../modules/face-landmark/source/ert/ObjectDetection.hh"
 #include "../../../modules/face-landmark/source/ert/SampleList.hh"
 
 using namespace cv;
 using namespace ert;
+using namespace vasr::detector;
 
 
-#define MAX_LONG_EDGE         1000.0
+#define MAX_LONG_EDGE         800.0
 
 #define INFOBOX_HEIGHT        100
 
 #define FRAME_MAX_WIDTH       640
 
-#define FACE_CASCADE_FILE     "haarcascade_frontalface_alt.xml"
+#define FACE_CASCADE_FILE     "haarcascade_frontalface_alt2.xml"
 
 #define FLANDMARK_FILE        "flandmark_model.dat"
 
@@ -36,6 +38,8 @@ const char *directory = NULL;
 bool showGoldParts = true;
 
 bool showFittedParts = true;
+
+bool useViolaJones = false;
 
 
 const uint16_t LAYOUT_68_PARTS[] =
@@ -73,7 +77,7 @@ void main_parseOptions( int argc, char **argv )
 {
     int opt;
 
-    while ((opt = getopt(argc, argv, "i:p:f:d:")) != -1)
+    while ((opt = getopt(argc, argv, "i:p:f:d:v")) != -1)
     {
         switch (opt)
         {
@@ -88,6 +92,9 @@ void main_parseOptions( int argc, char **argv )
                 break;
             case 'd':
 				directory = optarg;
+				break;
+			case 'v':
+				useViolaJones = true;
 				break;
             default: /* '?' */
                 main_usage();
@@ -125,20 +132,48 @@ char main_display(
 	char key;
 	int longEdge;
 	float factor = 1;
+	bool violaJonesFail = false;
 
 	std::cout << "Displaying " << imageFile << std::endl;
 
 	Mat image = imread(imageFile);
 	ObjectDetection gold(pointsFile);
 	ObjectDetection fitted(fittedFile);
+	Rect area, face;
 
-	// compute the ROI
-	Rect area = gold.get_rect();
-	float border = std::max( (area.width * 0.1), (area.height * 0.1) );
-	area.x      -= border;
-	area.width  += border * 2;
-	area.y      -= border;
-	area.height += border * 2;
+	if (useViolaJones)
+	{
+		CascadeClassifier *faceCascade = new CascadeClassifier(FACE_CASCADE_FILE);
+		ViolaJones *detector = new ViolaJones(faceCascade);
+
+		Mat gray;
+		cvtColor(image, gray, CV_BGR2GRAY);
+
+		if (!detector->detect(gray, face))
+		{
+			std::cout << "Viola-Jones failed!" << std::endl;
+			violaJonesFail = true;
+		}
+		else
+			area = face;
+
+		delete detector;
+		delete faceCascade;
+	}
+
+	if (violaJonesFail || !useViolaJones)
+	{
+		// compute the ROI
+		area = face = gold.get_rect();
+#if (0)
+		float border = std::max( (area.width * 0.1), (area.height * 0.1) );
+		area.x      -= border;
+		area.width  += border * 2;
+		area.y      -= border;
+		area.height += border * 2;
+#endif
+	}
+#if (0)
 	// adjust the ROI to fit in the image
 	if (area.x < 0) area.x = 0;
 	if (area.y < 0) area.y = 0;
@@ -148,7 +183,10 @@ char main_display(
 	image = image(area);
 	gold -= Point2f( area.x, area.y );
 	fitted -= Point2f( area.x, area.y );
-
+	// adjust the bouding box position
+	face.x -= area.x;
+	face.y -= area.y;
+#endif
 	//longEdge = std::max(image.rows, image.cols);
 	longEdge = image.rows;
 	if (longEdge > MAX_LONG_EDGE)
@@ -160,6 +198,10 @@ char main_display(
 
 		gold /= factor;
 		fitted /= factor;
+		face.x /= factor;
+		face.y /= factor;
+		face.width /= factor;
+		face.height /= factor;
 	}
 
 	// plot the parts
@@ -168,7 +210,7 @@ char main_display(
 	if (showFittedParts)
 		fitted.plot(image, LAYOUT_68_PARTS, Scalar(0, 0, 255));
 	// plot an rectangle to show the bouding box
-	cv::rectangle(image, gold.get_rect(), Scalar(0, 255, 0));
+	cv::rectangle(image, face, Scalar(0, 255, 0));
 
 	main_println(image, 0, 0, 0, imageFile);
 

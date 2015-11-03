@@ -102,8 +102,12 @@ void MainViewer::show(
 	const ObjectDetection &current )
 {
 	cvtColor(image, display, CV_GRAY2BGR);
+	// plot the gold standard points
 	gold.plot(display, LAYOUT_68_PARTS, Scalar(255,0,0));
+	// plot the current fitted points
 	current.plot(display, LAYOUT_68_PARTS, Scalar(0,0,255));
+	// plot an rectangle to show the bouding box
+	cv::rectangle(display, gold.get_rect(), Scalar(0, 255, 0));
 
 	std::stringstream ss;
 	ss << "Tree #" << tree + 1 << " of cascade #" << cascade + 1;

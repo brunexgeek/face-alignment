@@ -69,22 +69,27 @@ void MainSampleLoader::load(
 	cv::Mat &image,
 	ObjectDetection &annot )
 {
+	//static float originalSize = 0, croppedSize = 0;
+
 	// load the image
+	cv::Mat source = imread(imageFileName);
+	cv::Mat gray;
 #if (0)
-	cv::cvtColor(imread(line), image, CV_BGR2GRAY);
+	cv::cvtColor(source, gray, CV_BGR2GRAY);
 #else
 	cv::Mat temp[3];
-	cv::split(imread(imageFileName), temp);
+	cv::split(source, temp);
 	temp[0].convertTo(temp[0], CV_32F);
 	temp[1].convertTo(temp[1], CV_32F);
 	temp[2].convertTo(temp[2], CV_32F);
-	image = temp[0] + temp[1] + temp[2];
-	image /= 3.0;
-	image.convertTo(image, CV_8U);
+	gray = temp[0] + temp[1] + temp[2];
+	gray /= 3.0;
+	gray.convertTo(gray, CV_8U);
 #endif
+	source.release();
 
 	Rect face;
-	if (useViolaJones && !detector->detect(image, face))
+	if (useViolaJones && !detector->detect(gray, face))
 		throw 1;
 
 	// load the annotations
@@ -98,6 +103,28 @@ void MainSampleLoader::load(
 	{
 		std::cout << "   Ignoring file " << pointsFile << std::endl;
 	}
+
+	// crop the original image to save memory
+	if (!useViolaJones)
+	{
+		Rect area = annot.get_rect();
+
+		// adjust the ROI to fit in the image
+		if (area.x < 0) area.x = 0;
+		if (area.y < 0) area.y = 0;
+		if (area.x + area.width > gray.cols) area.width = gray.cols - area.x;
+		if (area.y + area.height > gray.rows) area.height = gray.rows - area.y;
+		// crop the original image
+//originalSize += gray.total() * gray.elemSize();
+//std::cout << "  Image: " << originalSize / 1024 / 1024 << std::endl;
+		gray = gray(area);
+		gray.copyTo(image);
+//croppedSize += image.total() * image.elemSize();
+//std::cout << "Cropped: " << croppedSize / 1024 / 1024 << std::endl << std::endl;
+		annot -= Point2f( area.x, area.y );
+	}
+	else
+		image = gray;
 }
 
 
