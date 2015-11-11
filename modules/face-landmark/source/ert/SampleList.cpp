@@ -84,7 +84,7 @@ SampleList::SampleList(
 			++i;
 		} catch (...)
 		{
-			std::cout << "Ops" << std::endl;
+			// suppress errors
 		}
 	}
 

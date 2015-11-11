@@ -352,7 +352,6 @@ printShape(" = ", tree.leaf_values[i]);*/
 				while(feat.idx1 == feat.idx2 || !(accept_prob > rnd.get_random_double()));
 
 				feat.thresh = (rnd.get_random_double()*256 - 128)/2.0;
-				//feat.thresh = (rnd.get_random_double()*256 - 128)/2.0 + 128;
 
 				return feat;
 			}

@@ -6,7 +6,7 @@
 #include "ObjectDetection.hh"
 #include <opencv2/opencv.hpp>
 #include "PointAffineTransform.hh"
-#include "console_progress_indicator.h"
+#include "ProgressIndicator.hh"
 #include "Serializable.hh"
 #include <iostream>
 #include "rand/rand_kernel_1.h"

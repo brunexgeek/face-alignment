@@ -102,7 +102,8 @@ void MainSampleLoader::load(
 	{
 		annot.load(pointsFile);
 		if (useViolaJones) annot.set_rect(face);
-
+		// remove the first 17 points
+		annot.remove(0, 16);
 	} catch (...)
 	{
 		std::cout << "   Ignoring file " << pointsFile << std::endl;
@@ -119,12 +120,8 @@ void MainSampleLoader::load(
 		if (area.x + area.width > gray.cols) area.width = gray.cols - area.x;
 		if (area.y + area.height > gray.rows) area.height = gray.rows - area.y;
 		// crop the original image
-//originalSize += gray.total() * gray.elemSize();
-//std::cout << "  Image: " << originalSize / 1024 / 1024 << std::endl;
 		gray = gray(area);
 		gray.copyTo(image);
-//croppedSize += image.total() * image.elemSize();
-//std::cout << "Cropped: " << croppedSize / 1024 / 1024 << std::endl << std::endl;
 		annot -= Point2f( area.x, area.y );
 	}
 	else
@@ -232,8 +229,21 @@ void main_parseOptions( int argc, char **argv )
 	}
 }
 
+#include <unistd.h>
+
 int main(int argc, char** argv)
 {
+
+	ProgressIndicator pi(20);
+
+	for (int i = 0; i < 20; ++i)
+	{
+		pi.update(i, true);
+		sleep(3);
+	}
+
+	return 0;
+
 	main_parseOptions(argc, argv);
 
 	if (!trainScriptFileName.empty())

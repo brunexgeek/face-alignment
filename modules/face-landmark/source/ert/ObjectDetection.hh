@@ -93,6 +93,8 @@ class ObjectDetection
 
 		ObjectDetection &operator-=( const Point2f &factor );
 
+		void remove( size_t from, size_t to );
+
 	private:
 		Rect rect;
 		std::vector<Point2f> parts;

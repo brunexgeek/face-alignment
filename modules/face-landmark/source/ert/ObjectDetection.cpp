@@ -216,4 +216,13 @@ ObjectDetection &ObjectDetection::operator-=( const Point2f &factor )
 }
 
 
+void ObjectDetection::remove( size_t from, size_t to )
+{
+	if (from < 0 || from > num_parts() || to < 0 || to > num_parts() || from <= to)
+		return;
+
+	parts.erase(parts.begin() + from, parts.begin() + to);
+}
+
+
 } // namespace ert

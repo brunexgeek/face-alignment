@@ -4,12 +4,15 @@
 #include <cvaux.h>
 #include <opencv2/opencv.hpp>
 #include <getopt.h>
+#include <istream>
 #include <face-detector/detector.hpp>
 #include <face-landmark/landmark.hpp>
+#include "../../../modules/face-landmark/source/ert/ShapePredictor.hh"
 
 
 using namespace vasr::detector;
 using namespace vasr::landmark;
+using namespace ert;
 using namespace cv;
 
 
@@ -17,9 +20,33 @@ using namespace cv;
 
 #define FRAME_MAX_WIDTH       640
 
-#define FACE_CASCADE_FILE     "haarcascade_frontalface_alt.xml"
+#define FACE_CASCADE_FILE     "haarcascade_frontalface_alt2.xml"
 
 #define FLANDMARK_FILE        "flandmark_model.dat"
+
+
+const uint16_t LAYOUT_68_PARTS[] =
+{
+	// contorno da face
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, ObjectDetection::OPEN,
+	// sobrancelha esquerda
+	17, 18, 19, 20, 21, ObjectDetection::OPEN,
+	// sobrancelha direita
+	22, 23, 24, 25, 26, ObjectDetection::OPEN,
+	// linha vertical do nariz
+	27, 28, 29, 30, ObjectDetection::OPEN,
+	// linha horizontal do nariz
+	31, 32, 33, 34, 35, ObjectDetection::OPEN,
+	// olho esquerdo
+	36, 37, 38, 39, 40, 41, ObjectDetection::CLOSE,
+	// olho direito
+	42, 43, 44, 45, 46, 47, ObjectDetection::CLOSE,
+	// parte externa da boca
+	48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, ObjectDetection::CLOSE,
+	// parte interna da boca
+	60, 61, 62, 63, 64, 65, 66, 67, ObjectDetection::CLOSE,
+	ObjectDetection::END
+};
 
 
 bool useCamera = false;
@@ -98,50 +125,6 @@ static int main_initDevice(
         }
     }
     return 0;
-}
-
-
-
-bool main_landmark(
-    Mat &orig,
-    Mat &input,
-    FaceDetector *detector,
-    FaceLandmark *landmarker,
-    Rect &bbox,
-    int *time )
-{
-    static bool hasFace = false;
-
-    if (!detector->detect(input, bbox))
-    {
-        if (hasFace)
-        {
-            printf("No face detected!\n");
-            hasFace = false;
-        }
-        return false;
-    }
-    else
-    {
-        if (!hasFace)
-        {
-            printf("Face detected!\n");
-            hasFace = true;
-        }
-    }
-
-    double startTime = (double)getTickCount();
-
-    /*landmarker->detect(input, bbox);
-
-
-    if (time != NULL)
-    {
-        startTime = (double)cvGetTickCount() - startTime;
-        *time = cvRound( startTime / ((double)cvGetTickFrequency() * 1000.0) );
-    }*/
-
-    return true;
 }
 
 
@@ -230,17 +213,6 @@ static Mat main_getRotationMatrix(
     return cv::getRotationMatrix2D(center, angle, 1);
 }
 
-Point2f operator*(cv::Mat M, const cv::Point2f& p)
-{
-	cv::Mat src(3/*rows*/,1 /* cols */,CV_64F);
-
-	src.at<double>(0,0)=p.x;
-	src.at<double>(1,0)=p.y;
-	src.at<double>(2,0)=1.0;
-
-	cv::Mat dst = M*src; //USE MATRIX ALGEBRA
-	return cv::Point2f(dst.at<double>(0,0),dst.at<double>(1,0));
-}
 
 
 static void main_rotateFace(
@@ -283,7 +255,6 @@ int main( int argc, char** argv )
     bool mustResize = false;
     bool hasFace;
     ViolaJones *detector;
-    FaceLandmark *landmarker;
     const char *windowName = "Visual ASR Demo";
     VideoWriter *writer = NULL;
     int inputFPS = 0;
@@ -339,12 +310,10 @@ int main( int argc, char** argv )
     }
 
     // load flandmark model
-    FLANDMARK_Model * model = flandmark_init(FLANDMARK_FILE);
-    if (model == 0)
-    {
-        printf("Error laoding flandmark model '%s'\n", FLANDMARK_FILE);
-        return 1;
-    }
+    ShapePredictor model;
+	std::ifstream input("model.dat");
+	model.deserialize(input);
+	input.close();
 
     // create the temporary buffers
     Rect bbox;
@@ -358,7 +327,6 @@ std::cout << "'display'  Type " << display.type() << std::endl;
 
     // initialize the face detector and face landmarker
     detector = new ViolaJones(&faceCascade);
-    landmarker = new FLandmark(model);
 
     while (flag)
     {
@@ -386,16 +354,16 @@ std::cout << "'display'  Type " << display.type() << std::endl;
 		//frame = tempFrame;
         // convert the original frame to grayscale and look for landmarks
         cvtColor(frame, frame_bw, CV_RGB2GRAY);
-        hasFace = main_landmark(frame, frame_bw, detector, landmarker, bbox, &landmarkTime);
+        bool hasFace = detector->detect(frame_bw, bbox);
         if (showProcessedFrame)
         {
 			cvtColor(frame_bw, frame, CV_GRAY2RGB);
 		}
-        if (hasFace && useRotation)
+        /*if (hasFace && useRotation)
         {
             main_rotateFace(frame, rotated, *landmarker);
             frame = rotated;
-        }
+        }*/
 
         // update the display image
         copyMakeBorder(frame, display, 0, INFOBOX_HEIGHT, 0, 0, cv::BORDER_CONSTANT, cvScalar(0.0f, 0.0f, 0.0f, 0.0f));
@@ -403,9 +371,12 @@ std::cout << "'display'  Type " << display.type() << std::endl;
         // display landmarks
         if (hasFace)
         {
+			ObjectDetection det = model.detect(frame_bw, bbox);
+
             rectangle(display, Point(bbox.x, bbox.y), cvPoint(bbox.x+bbox.width, bbox.y+bbox.height), CV_RGB(255,0,0) );
-            rectangle(display, Point(model->bb[0], model->bb[1]), cvPoint(model->bb[2], model->bb[3]), CV_RGB(0,0,255) );
-            if (!useRotation)
+            //rectangle(display, Point(model->bb[0], model->bb[1]), Point(model->bb[2], model->bb[3]), CV_RGB(0,0,255) );
+            det.plot(display, LAYOUT_68_PARTS, Scalar(255,0,0));
+            /*if (!useRotation)
             {
                 Point point;
                 for (int i = 1; i < model->data.options.M; ++i)
@@ -414,7 +385,7 @@ std::cout << "'display'  Type " << display.type() << std::endl;
                     point.y = landmarker->getY(i);
                     circle(display, point, 3, CV_RGB(255,0,0), CV_FILLED);
                 }
-            }
+            }*/
         }
 
         // update time counters
@@ -460,5 +431,4 @@ std::cout << "'display'  Type " << display.type() << std::endl;
     delete writer;
     delete device;
     cvDestroyWindow(windowName);
-    flandmark_free(model);
 }

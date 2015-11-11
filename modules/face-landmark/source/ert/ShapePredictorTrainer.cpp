@@ -320,7 +320,7 @@ std::getchar();*/
 			if (_verbose)
 			{
 				++trees_fit_so_far;
-				pbar.print(trees_fit_so_far);
+				pbar.update(trees_fit_so_far, true);
 			}
 		}
 	}
