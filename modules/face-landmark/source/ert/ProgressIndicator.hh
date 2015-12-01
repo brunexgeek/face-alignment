@@ -28,6 +28,7 @@ namespace ert
 class ProgressIndicator
 {
 	public:
+		static const int WAIT_TIMES = 3;
 		explicit ProgressIndicator(
 			double iterations );
 
@@ -46,6 +47,7 @@ class ProgressIndicator
 		time_t lastTime;
 		int remaining;
 		int hours, minutes, seconds;
+		int mustWait;
 };
 
 

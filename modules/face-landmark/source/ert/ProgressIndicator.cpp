@@ -20,6 +20,8 @@ void ProgressIndicator::reset(
 	firstCall = true;
 	lastTime = 0;
 	hours = minutes = seconds = 0;
+	mustWait = WAIT_TIMES;
+	remaining = 0;
 }
 
 
@@ -47,18 +49,26 @@ bool ProgressIndicator::update(
 		if (delta_val < std::numeric_limits<double>::epsilon())
 			return false;
 
-		remaining = round(delta_t/delta_val * std::abs(iterations - current));
+		int time = round(delta_t/delta_val * std::abs(iterations - current));
+		if (remaining == 0) remaining = time;
 
-		hours = remaining / (60 * 60);
-		minutes =  (remaining / 60) % 60;
-		seconds = remaining % 60;
+		if (time > remaining && mustWait == 0 || time <= remaining)
+		{
+			remaining = time;
+			hours = remaining / (60 * 60);
+			minutes =  (remaining / 60) % 60;
+			seconds = remaining % 60;
+			mustWait = WAIT_TIMES;
+		}
+		else
+			mustWait--;
 
 		if (print)
 		{
 			std::cout << "Time remaining: " <<
 				std::setfill('0') << std::setw(2) << hours << ":" <<
 				std::setfill('0') << std::setw(2) << minutes << ":" <<
-				std::setfill('0') << std::setw(2) << seconds << std::flush;
+				std::setfill('0') << std::setw(2) << seconds << "\r" << std::flush;
 		}
 
 		return true;

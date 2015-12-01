@@ -233,17 +233,6 @@ void main_parseOptions( int argc, char **argv )
 
 int main(int argc, char** argv)
 {
-
-	ProgressIndicator pi(20);
-
-	for (int i = 0; i < 20; ++i)
-	{
-		pi.update(i, true);
-		sleep(3);
-	}
-
-	return 0;
-
 	main_parseOptions(argc, argv);
 
 	if (!trainScriptFileName.empty())
