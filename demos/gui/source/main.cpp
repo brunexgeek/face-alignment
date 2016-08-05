@@ -55,8 +55,8 @@ char *inputFileName = NULL;
 char *outputFileName = NULL;
 bool useRotation = false;
 
-CvPoint lastLeft = { 0, 0 };
-CvPoint lastRight = { 0, 0 };
+CvPoint lastLeft/* = { 0, 0 }*/;
+CvPoint lastRight/* = { 0, 0 }*/;
 
 void main_usage()
 {

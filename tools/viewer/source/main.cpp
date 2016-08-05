@@ -13,6 +13,7 @@
 using namespace cv;
 using namespace ert;
 using namespace vasr::detector;
+using namespace std;
 
 
 #define MAX_LONG_EDGE         800.0
