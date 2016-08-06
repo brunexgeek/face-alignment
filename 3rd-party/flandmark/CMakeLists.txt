@@ -12,7 +12,7 @@ if(NOT CMAKE_BUILD_TYPE)
 		FORCE)
 endif(NOT CMAKE_BUILD_TYPE)
 
-option(BUILD_MATLAB_BINDINGS "Build MATLAB bindings" ON)
+option(BUILD_MATLAB_BINDINGS "Build MATLAB bindings" OFF)
 option(BUILD_CPP_EXAMPLES "Build CPP examples" ON)
 
 find_package(OpenMP)
@@ -30,7 +30,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -pedantic")
 add_subdirectory(libflandmark)
 # build cpp examples
 if (BUILD_CPP_EXAMPLES)
-	add_subdirectory(examples)
+	#add_subdirectory(examples)
 endif(BUILD_CPP_EXAMPLES)
 # build MATLAB mex-files
 if(BUILD_MATLAB_BINDINGS)

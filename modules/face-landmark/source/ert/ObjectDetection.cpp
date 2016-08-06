@@ -67,7 +67,7 @@ void ObjectDetection::computeBoundingBox(
 }
 
 
-void ObjectDetection::save( const string& fileName ) const
+void ObjectDetection::save( const std::string& fileName ) const
 {
 	std::ofstream out(fileName.c_str());
 

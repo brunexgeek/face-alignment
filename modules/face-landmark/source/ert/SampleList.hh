@@ -88,7 +88,7 @@ class SampleList
 
 		std::vector<std::vector<ObjectDetection*> > annotations;
 
-		std::vector<string> imageFileNames;
+		std::vector<std::string> imageFileNames;
 
 };
 

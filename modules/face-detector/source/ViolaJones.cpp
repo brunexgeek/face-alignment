@@ -27,7 +27,7 @@ bool ViolaJones::detect( const Mat &input, Rect &rect )
     int size;
     Rect current;
     int width = 0;
-    vector<Rect> objects;
+   std::vector<Rect> objects;
 
     size = std::min(input.cols, input.rows) / 4;
     Size minSize = Size(size, size);

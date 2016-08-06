@@ -76,7 +76,7 @@ class ObjectDetection
 			float border );
 
 		void save(
-			const string& fileName ) const;
+			const std::string& fileName ) const;
 
 		void load(
 			const std::string &fileName );
