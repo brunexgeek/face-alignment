@@ -255,11 +255,14 @@ int main(int argc, char** argv)
 				trainer.set_num_test_splits(configTestSplits);
 			trainer.be_verbose();
 
-			std::cout << "      Cascade depth: " << trainer.get_cascade_depth() << std::endl;
-			std::cout << "  Trees per cascade: " << trainer.get_num_trees_per_cascade_level() << std::endl;
-			std::cout << "         Tree depth: " << trainer.get_tree_depth() << std::endl;
-			std::cout << "Oversampling amount: " << trainer.get_oversampling_amount() << std::endl;
-			std::cout << "   Number of splits: " << trainer.get_num_test_splits() << std::endl << std::endl;
+			std::cout << "       Cascade depth: " << trainer.get_cascade_depth() << std::endl;
+			std::cout << "   Trees per cascade: " << trainer.get_num_trees_per_cascade_level() << std::endl;
+			std::cout << "          Tree depth: " << trainer.get_tree_depth() << std::endl;
+			std::cout << " Oversampling amount: " << trainer.get_oversampling_amount() << std::endl;
+			std::cout << "    Number of splits: " << trainer.get_num_test_splits() << std::endl;
+            std::cout << "   Feature pool size: " << trainer.get_feature_pool_size() << std::endl;
+            std::cout << "   Exp. prior lamdba: " << trainer.get_lambda() << std::endl;
+            std::cout << "Learning coefficient: " << trainer.get_nu() << std::endl << std::endl;
 
 			// generate the shape model and save in disk
 			ShapePredictor model = trainer.train(script.getImages(), script.getAnnotations());
