@@ -1,8 +1,8 @@
 
 #include <opencv2/opencv.hpp>
 #include <face-detector/detector.hpp>
-#include "../../../modules/face-landmark/source/ert/ShapePredictorTrainer.hh"
-#include "../../../modules/face-landmark/source/ert/SampleList.hh"
+#include <ert/ShapePredictorTrainer.hh>
+#include <ert/SampleList.hh>
 
 #include <iostream>
 #include <fstream>

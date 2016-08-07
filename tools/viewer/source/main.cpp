@@ -7,8 +7,8 @@
 #include <dirent.h>
 #include <cmath>
 #include <face-detector/detector.hpp>
-#include "../../../modules/face-landmark/source/ert/ObjectDetection.hh"
-#include "../../../modules/face-landmark/source/ert/SampleList.hh"
+#include <ert/ObjectDetection.hh>
+#include <ert/SampleList.hh>
 
 using namespace cv;
 using namespace ert;

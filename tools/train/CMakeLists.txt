@@ -2,7 +2,8 @@ find_package( OpenCV REQUIRED )
 
 include_directories(
     ${OpenCV_INCLUDE_DIRS}
-    "../../modules/face-detector/include")
+    "${ROOT_DIRECTORY}/modules/face-landmark/include"
+    "${ROOT_DIRECTORY}/modules/face-detector/include")
 
 file(GLOB TOOL_TRAIN_SRC "source/*.cpp")
 
