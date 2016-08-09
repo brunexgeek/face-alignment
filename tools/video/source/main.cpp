@@ -6,13 +6,11 @@
 #include <getopt.h>
 #include <istream>
 #include <face-detector/detector.hpp>
-#include <face-landmark/landmark.hpp>
 #include <ert/ShapePredictor.hh>
 #include <ert/opencv.hh>
 
 
 using namespace vasr::detector;
-using namespace vasr::landmark;
 using namespace ert;
 using namespace cv;
 
@@ -168,7 +166,7 @@ static void main_getDelta(
     dy += (left.y) - (right.y);
 }
 
-
+/*
 static Mat main_getRotationMatrix(
     FaceLandmark &landmarker  )
 {
@@ -213,9 +211,9 @@ static Mat main_getRotationMatrix(
 //printf("Angle: %f degress gradient %f)\n", angle, m);
     return cv::getRotationMatrix2D(center, angle, 1);
 }
+*/
 
-
-
+/*
 static void main_rotateFace(
     Mat &image,
     Mat &rotated,
@@ -246,7 +244,7 @@ static void main_rotateFace(
     rotated = dst;
 
     rectangle(rotated, lp, rp, CV_RGB(255,0,0) );
-}
+}*/
 
 
 int main( int argc, char** argv )
@@ -310,7 +308,7 @@ int main( int argc, char** argv )
         return 1;
     }
 
-    // load flandmark model
+    // load landmark model
     ShapePredictor model;
 	std::ifstream input("model.dat");
 	model.deserialize(input);

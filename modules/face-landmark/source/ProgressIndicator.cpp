@@ -52,7 +52,7 @@ bool ProgressIndicator::update(
 		int time = round(delta_t/delta_val * std::abs(iterations - current));
 		if (remaining == 0) remaining = time;
 
-		if (time > remaining && mustWait == 0 || time <= remaining)
+		if (time > remaining && (mustWait == 0 || time <= remaining))
 		{
 			remaining = time;
 			hours = remaining / (60 * 60);

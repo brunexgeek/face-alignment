@@ -21,6 +21,7 @@
 #include <iostream>
 #include <algorithm>     // std::copy
 #include <stdexcept>
+#include <limits>
 //#include "../uintn.h"
 //#include "../serialize.h"
 
